@@ -57,6 +57,7 @@ func Load(configPath string) (*Config, error) {
 		cfg.FigmaOauth2 = v
 		cfg.AuthSource = "env:FIGMA_OAUTH2"
 	}
+	// PATCH: pat-auth-wiring (records this hand-edit in .printing-press-patches.json)
 	// PAT via X-Figma-Token (Figma's primary auth for personal use)
 	for _, name := range []string{"FIGMA_ACCESS_TOKEN", "FIGMA_API_TOKEN", "FIGMA_API_KEY"} {
 		if v := os.Getenv(name); v != "" && cfg.FigmaPAT == "" {
