@@ -520,9 +520,36 @@ func matchedExistingOT(r opentable.UpcomingReservation, slug, date, hhmm string,
 	if rDate != date || normalizeTime(rTime) != normalizeTime(hhmm) {
 		return false
 	}
-	// OT's UpcomingReservation doesn't carry restaurantSlug — fall back to
-	// confirming via restaurantName containing slug-like tokens. Best-effort:
-	// the agent specifies the slug; if pre-flight matches all-but-slug, surface.
-	// Future: add a separate canonical-slug field via a follow-up GraphQL.
+	// OT's UpcomingReservation doesn't carry a canonical slug. Fall back to
+	// requiring every non-empty slug-token to appear in the alphanumeric-only
+	// normalization of RestaurantName. For "water-grill-bellevue" that
+	// produces {water, grill, bellevue} all matching "watergrillbellevue";
+	// "canlis" would not match, so a Canlis booking on the same slot doesn't
+	// silently report matched_existing for Water Grill.
+	normName := normalizeForSlugMatch(r.RestaurantName)
+	if normName == "" {
+		return false
+	}
+	for _, tok := range strings.Split(slug, "-") {
+		if tok == "" {
+			continue
+		}
+		if !strings.Contains(normName, tok) {
+			return false
+		}
+	}
 	return true
+}
+
+// normalizeForSlugMatch lowercases s and strips non-alphanumeric runes so
+// slug tokens can be matched against display-name strings.
+func normalizeForSlugMatch(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range strings.ToLower(s) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
