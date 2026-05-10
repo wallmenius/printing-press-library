@@ -224,12 +224,16 @@ func TestMatchedExistingOT_RestaurantSlugCheck(t *testing.T) {
 		{"different restaurant overlapping token", "grill-on-the-alley", false},
 		{"slug with extra token not in name", "water-grill-bellevue-private", false},
 		{"empty name short-circuits", "water-grill-bellevue", false},
+		{"accented name folds to ascii", "cafe-du-monde", true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := water
-			if tc.name == "empty name short-circuits" {
+			switch tc.name {
+			case "empty name short-circuits":
 				r.RestaurantName = ""
+			case "accented name folds to ascii":
+				r.RestaurantName = "Café du Monde"
 			}
 			got := matchedExistingOT(r, tc.slug, "2026-05-13", "19:00", 2)
 			if got != tc.want {
@@ -243,7 +247,12 @@ func TestNormalizeForSlugMatch(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"Water Grill - Bellevue", "watergrillbellevue"},
 		{"Canlis", "canlis"},
-		{"L'Étoile", "ltoile"}, // non-ASCII letters dropped
+		// Greptile P2: accented runes fold to ASCII so slug tokens like
+		// "cafe" / "etoile" match Café / L'Étoile.
+		{"Café du Monde", "cafedumonde"},
+		{"L'Étoile", "letoile"},
+		{"Niño Restaurant", "ninorestaurant"},
+		{"Brüder", "bruder"},
 		{"", ""},
 	}
 	for _, tc := range cases {

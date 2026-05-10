@@ -306,7 +306,7 @@ func checkAcknowledgeIfPresent(ctx context.Context) error {
 	js := `
 		(() => {
 			const policyRE  = /cancellation|policy|agree|acknowledg|terms|conditions/i;
-			const optInRE   = /newsletter|subscrib|promotion|marketing|offers|email|sms|text message/i;
+			const optInRE   = /newsletter|subscrib|promotion|marketing|offers|(?:promo|marketing|promotional) email|sms|text message/i;
 			const labelText = (cb) => {
 				const wrap = cb.closest('label');
 				if (wrap && wrap.textContent) return wrap.textContent;

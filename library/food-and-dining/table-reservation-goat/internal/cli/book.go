@@ -33,8 +33,12 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/cliutil"
 	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/source/auth"
@@ -541,12 +545,26 @@ func matchedExistingOT(r opentable.UpcomingReservation, slug, date, hhmm string,
 	return true
 }
 
-// normalizeForSlugMatch lowercases s and strips non-alphanumeric runes so
-// slug tokens can be matched against display-name strings.
+// asciiFold runs NFKD decomposition then removes combining marks so accented
+// runes ("é", "ñ", "ü") fold to their ASCII bases ("e", "n", "u") before the
+// alphanumeric filter. Without this, "Café du Monde" normalizes to
+// "cafdumonde" instead of "cafedumonde", breaking idempotency match against
+// slug "cafe-du-monde".
+var asciiFold = transform.Chain(norm.NFKD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+
+// normalizeForSlugMatch lowercases s, folds non-ASCII letters to their ASCII
+// bases, and strips non-alphanumeric runes so slug tokens can be matched
+// against display-name strings.
 func normalizeForSlugMatch(s string) string {
+	folded, _, err := transform.String(asciiFold, s)
+	if err != nil {
+		// Fold failures are rare (transform errors are mostly EOF/buffer);
+		// fall back to the raw string so we still produce useful output.
+		folded = s
+	}
 	var b strings.Builder
-	b.Grow(len(s))
-	for _, r := range strings.ToLower(s) {
+	b.Grow(len(folded))
+	for _, r := range strings.ToLower(folded) {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
 			b.WriteRune(r)
 		}
