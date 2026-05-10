@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -37,6 +38,10 @@ func newCatalogueDiffCmd(flags *rootFlags) *cobra.Command {
 			if dryRunOK(flags) {
 				return nil
 			}
+			only := strings.ToLower(strings.TrimSpace(flagOnly))
+			if only != "prisjakt" && only != "pricerunner" {
+				return fmt.Errorf("invalid --only %q: expected \"prisjakt\" or \"pricerunner\"", flagOnly)
+			}
 			st, err := openSEPStore(cmd.Context())
 			if err != nil {
 				return err
@@ -46,7 +51,6 @@ func newCatalogueDiffCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			only := strings.ToLower(flagOnly)
 			result := &diffResult{Category: flagCategory, OnlySource: only}
 			result.UniqueProducts = computeCatalogueDiff(products, only)
 			if flagLimit > 0 && len(result.UniqueProducts) > flagLimit {
@@ -65,8 +69,12 @@ func newCatalogueDiffCmd(flags *rootFlags) *cobra.Command {
 }
 
 func computeCatalogueDiff(products []store.SEProduct, only string) []store.SEProduct {
+	// Caller is responsible for validating `only` (the cobra RunE rejects
+	// anything other than "prisjakt"/"pricerunner" before calling this), but
+	// we re-check here so the helper is safe in isolation: an unknown value
+	// degrades to no-results rather than the previous silent fallback.
 	if only != "prisjakt" && only != "pricerunner" {
-		only = "prisjakt"
+		return nil
 	}
 	other := "prisjakt"
 	if only == "prisjakt" {

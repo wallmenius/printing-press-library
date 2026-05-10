@@ -50,9 +50,16 @@ func newWatchlistAddCmd(flags *rootFlags) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "add [identifier]",
-		Short: "Add a product to the watchlist. Identifier is a Prisjakt int ID, a PriceRunner string ID, or an EAN.",
+		Short: "Add a product to the watchlist. Identifier mode is explicit: pass --source for a site product ID, --ean for a barcode.",
+		Long: "Either pass --ean <gtin> for a barcode, or --source <prisjakt|pricerunner>\n" +
+			"with the site's product ID. Bare positionals without --source/--ean are\n" +
+			"rejected because Prisjakt's 8-9 digit numeric IDs visually overlap with\n" +
+			"GTIN-8 and GTIN-12 barcode formats: a heuristic guess silently misfiles\n" +
+			"shorter Prisjakt IDs as EANs and the watchlist entry then never matches\n" +
+			"any synced product.",
 		Example: "  se-prices-pp-cli watchlist add 14969878 --source prisjakt --max 9990\n" +
-			"  se-prices-pp-cli watchlist add 0194253433927 --ean --max 7500 --label \"iphone 15 budget\"",
+			"  se-prices-pp-cli watchlist add 1-3208336567 --source pricerunner --max 8500\n" +
+			"  se-prices-pp-cli watchlist add --ean 0194253433927 --max 7500 --label \"iphone 15 budget\"",
 		Annotations: map[string]string{},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ident := ""
@@ -65,35 +72,35 @@ func newWatchlistAddCmd(flags *rootFlags) *cobra.Command {
 			if dryRunOK(flags) {
 				return nil
 			}
-			if flagEAN != "" || (ident != "" && looksLikeEAN(ident)) {
-				ean := flagEAN
-				if ean == "" {
-					ean = ident
+			// EAN path requires explicit --ean. Auto-detection by digit length
+			// silently misclassified short Prisjakt IDs as EANs (Greptile P1
+			// finding on PR #402); requiring --ean forces the caller to declare
+			// intent.
+			if flagEAN != "" {
+				if !looksLikeEAN(flagEAN) {
+					return fmt.Errorf("invalid --ean %q: expected 8-14 digits", flagEAN)
 				}
 				st, err := openSEPStore(cmd.Context())
 				if err != nil {
 					return err
 				}
 				defer st.Close()
-				id, err := st.AddWatched(cmd.Context(), store.SEWatchedItem{EAN: ean, Label: flagLabel, MaxPriceSEK: flagMax})
+				id, err := st.AddWatched(cmd.Context(), store.SEWatchedItem{EAN: flagEAN, Label: flagLabel, MaxPriceSEK: flagMax})
 				if err != nil {
 					return err
 				}
-				return printJSONFiltered(cmd.OutOrStdout(), map[string]any{"id": id, "ean": ean, "max_price_sek": flagMax}, flags)
+				return printJSONFiltered(cmd.OutOrStdout(), map[string]any{"id": id, "ean": flagEAN, "max_price_sek": flagMax}, flags)
 			}
-			source := strings.ToLower(flagSource)
-			if source == "" {
-				source = guessSourceForID(ident)
-			}
+			source := strings.ToLower(strings.TrimSpace(flagSource))
 			if source != "prisjakt" && source != "pricerunner" {
-				return fmt.Errorf("--source required (prisjakt or pricerunner) when identifier is not an EAN")
+				return fmt.Errorf("--source required: pass --source prisjakt or --source pricerunner. For barcode lookups use --ean <gtin>")
 			}
 			id := flagID
 			if id == "" {
 				id = ident
 			}
 			if id == "" {
-				return fmt.Errorf("identifier missing")
+				return fmt.Errorf("identifier missing: pass it as a positional arg or via --id")
 			}
 			st, err := openSEPStore(cmd.Context())
 			if err != nil {
@@ -107,9 +114,9 @@ func newWatchlistAddCmd(flags *rootFlags) *cobra.Command {
 			return printJSONFiltered(cmd.OutOrStdout(), map[string]any{"id": watchedID, "source": source, "source_id": id, "max_price_sek": flagMax}, flags)
 		},
 	}
-	cmd.Flags().StringVar(&flagSource, "source", "", "Site: prisjakt or pricerunner")
-	cmd.Flags().StringVar(&flagID, "id", "", "Product ID on the chosen site")
-	cmd.Flags().StringVar(&flagEAN, "ean", "", "Track by EAN/GTIN instead")
+	cmd.Flags().StringVar(&flagSource, "source", "", "Site: prisjakt or pricerunner (required unless --ean is set)")
+	cmd.Flags().StringVar(&flagID, "id", "", "Product ID on the chosen site (alternative to positional arg)")
+	cmd.Flags().StringVar(&flagEAN, "ean", "", "Track by EAN/GTIN instead of a per-site ID; takes precedence over --source when set")
 	cmd.Flags().StringVar(&flagLabel, "label", "", "Optional human label")
 	cmd.Flags().Float64Var(&flagMax, "max", 0, "Maximum price in SEK that triggers `check`")
 	return cmd

@@ -6,11 +6,11 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mvanhorn/printing-press-library/library/commerce/se-prices/internal/store"
 	"github.com/spf13/cobra"
 	"net/url"
 	"os"
 	"regexp"
-	"github.com/mvanhorn/printing-press-library/library/commerce/se-prices/internal/store"
 	"strconv"
 	"strings"
 	"sync"

@@ -13,9 +13,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/mvanhorn/printing-press-library/library/commerce/se-prices/internal/client"
 	"github.com/mvanhorn/printing-press-library/library/commerce/se-prices/internal/config"
+	"github.com/spf13/cobra"
 )
 
 var version = "1.0.0"

@@ -507,3 +507,27 @@ func (s *Store) AllProductsByCategoryAcrossSources(ctx context.Context, category
 	defer rows.Close()
 	return scanSEProducts(rows)
 }
+
+// AllSEProducts returns every product in the store, capped at limit. Used by
+// `arbitrage` when the caller does not scope the scan to a single category.
+// Previously the no-category branch routed through SearchSEProducts(ctx, "*", N),
+// which is invalid FTS5 syntax (silent fall-through to a LIKE '%*%' query that
+// matches no rows). The result was that `arbitrage` without --category always
+// returned zero rows regardless of how much had been synced.
+func (s *Store) AllSEProducts(ctx context.Context, limit int) ([]SEProduct, error) {
+	if err := s.EnsureSEPricesSchema(ctx); err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 5000
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT source, source_id, name, brand, category, ean, url, image_url, COALESCE(lowest_price_sek, 0), COALESCE(last_seen_at, '')
+		FROM sep_products
+		ORDER BY name LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanSEProducts(rows)
+}

@@ -24,11 +24,13 @@ import (
 )
 
 type sepSyncReport struct {
-	Source         string `json:"source"`
-	CategoryInput  string `json:"category"`
-	ProductsSaved  int    `json:"products_saved"`
-	SnapshotsTaken int    `json:"snapshots_taken"`
-	Reason         string `json:"reason,omitempty"`
+	Source          string   `json:"source"`
+	CategoryInput   string   `json:"category"`
+	ProductsSaved   int      `json:"products_saved"`
+	SnapshotsTaken  int      `json:"snapshots_taken"`
+	SnapshotsFailed int      `json:"snapshots_failed,omitempty"`
+	SnapshotErrors  []string `json:"snapshot_errors,omitempty"`
+	Reason          string   `json:"reason,omitempty"`
 }
 
 type sepSyncResult struct {
@@ -134,13 +136,7 @@ func syncPrisjaktCategory(ctx context.Context, c *client.Client, st *store.Store
 		return rep
 	}
 	rep.ProductsSaved = len(products)
-	for _, p := range products {
-		if p.LowestSEK <= 0 {
-			continue
-		}
-		_ = st.AppendSESnapshot(ctx, store.SESnapshot{Source: p.Source, SourceID: p.SourceID, LowestSEK: p.LowestSEK})
-		rep.SnapshotsTaken++
-	}
+	recordSnapshots(ctx, st, products, &rep)
 	return rep
 }
 
@@ -179,12 +175,30 @@ func syncPriceRunnerCategory(ctx context.Context, c *client.Client, st *store.St
 		return rep
 	}
 	rep.ProductsSaved = len(products)
+	recordSnapshots(ctx, st, products, &rep)
+	return rep
+}
+
+// recordSnapshots writes one price snapshot per priced product and surfaces
+// any AppendSESnapshot errors on the report. The snapshot table backs the
+// `drops`, `is-sale`, and `history-combo` commands; if a write fails silently
+// those analytical commands later operate on incomplete data with no signal
+// to the operator that anything went wrong. Errors are aggregated (cap at 5
+// to keep the report compact) rather than aborting the loop, so a single
+// transient failure doesn't lose the rest of the snapshot batch.
+func recordSnapshots(ctx context.Context, st *store.Store, products []store.SEProduct, rep *sepSyncReport) {
+	const maxErrSamples = 5
 	for _, p := range products {
 		if p.LowestSEK <= 0 {
 			continue
 		}
-		_ = st.AppendSESnapshot(ctx, store.SESnapshot{Source: p.Source, SourceID: p.SourceID, LowestSEK: p.LowestSEK})
+		if err := st.AppendSESnapshot(ctx, store.SESnapshot{Source: p.Source, SourceID: p.SourceID, LowestSEK: p.LowestSEK}); err != nil {
+			rep.SnapshotsFailed++
+			if len(rep.SnapshotErrors) < maxErrSamples {
+				rep.SnapshotErrors = append(rep.SnapshotErrors, fmt.Sprintf("(%s, %s): %v", p.Source, p.SourceID, err))
+			}
+			continue
+		}
 		rep.SnapshotsTaken++
 	}
-	return rep
 }

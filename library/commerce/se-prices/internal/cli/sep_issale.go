@@ -83,12 +83,18 @@ func newIsSaleCmd(flags *rootFlags) *cobra.Command {
 			var prices []float64
 			var latest float64
 			var latestAt string
+			// Track the newest snapshot, but only when it has a usable price.
+			// Without the LowestSEK > 0 guard, a transient de-listing (price
+			// recorded as 0 in the most recent sync) would set CurrentPriceSEK
+			// to 0 and the actually_a_sale check 0 < median*0.9 would always
+			// fire, fabricating a sale for a product with no current offers.
 			for _, k := range keys {
 				snaps, _ := st.SnapshotsForProduct(cmd.Context(), k.Source, k.SourceID, windowStart)
 				for _, s := range snaps {
-					if s.LowestSEK > 0 {
-						prices = append(prices, s.LowestSEK)
+					if s.LowestSEK <= 0 {
+						continue
 					}
+					prices = append(prices, s.LowestSEK)
 					if s.TakenAt > latestAt {
 						latestAt = s.TakenAt
 						latest = s.LowestSEK
@@ -98,7 +104,7 @@ func newIsSaleCmd(flags *rootFlags) *cobra.Command {
 			result.SamplesInWindow = len(prices)
 			result.CurrentPriceSEK = latest
 			if len(prices) == 0 {
-				result.Reason = "no snapshots in window for this product; run `sync` periodically to build history"
+				result.Reason = "no priced snapshots in window for this product; run `sync` periodically to build history"
 				return printJSONFiltered(cmd.OutOrStdout(), result, flags)
 			}
 			sort.Float64s(prices)
@@ -109,7 +115,7 @@ func newIsSaleCmd(flags *rootFlags) *cobra.Command {
 			} else {
 				result.WindowMedianSEK = (prices[len(prices)/2-1] + prices[len(prices)/2]) / 2
 			}
-			result.ActuallyASale = result.WindowMedianSEK > 0 && result.CurrentPriceSEK < result.WindowMedianSEK*0.9
+			result.ActuallyASale = result.WindowMedianSEK > 0 && result.CurrentPriceSEK > 0 && result.CurrentPriceSEK < result.WindowMedianSEK*0.9
 			return printJSONFiltered(cmd.OutOrStdout(), result, flags)
 		},
 	}

@@ -62,7 +62,7 @@ func newArbitrageCmd(flags *rootFlags) *cobra.Command {
 			if flagCategory != "" {
 				products, err = st.AllProductsByCategoryAcrossSources(cmd.Context(), flagCategory)
 			} else {
-				products, err = st.SearchSEProducts(cmd.Context(), "*", 5000)
+				products, err = st.AllSEProducts(cmd.Context(), 5000)
 			}
 			if err != nil {
 				return err
