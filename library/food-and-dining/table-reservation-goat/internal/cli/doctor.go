@@ -6,17 +6,17 @@ package cli
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/client"
-	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/config"
-	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/store"
 	"github.com/spf13/cobra"
+	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/config"
+	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/source/auth"
+	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/source/opentable"
+	"github.com/mvanhorn/printing-press-library/library/food-and-dining/table-reservation-goat/internal/store"
 )
 
 // looksLikeDoctorInterstitial reports whether the response body matches a known
@@ -84,96 +84,56 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 				report["base_url"] = cfg.BaseURL
 			}
 
-			// Check auth
-			report["auth"] = "not required"
+			// Check auth and API reachability via the actual code paths the
+			// CLI uses for OpenTable and Tock — Surf with Chrome TLS
+			// fingerprint plus kooky-imported cookies. The previous probe did
+			// `client.Get("/", nil)` against `BaseURL = https://www.opentable.com`
+			// via the vestigial generic stdlib HTTP client, which Akamai
+			// uniformly RST_STREAMs (false "API: unreachable" failure). The
+			// real commands never use that path; the honest probe exercises
+			// the source clients directly.
+			session, sessErr := auth.Load()
+			otCookies := 0
+			tockCookies := 0
+			if sessErr == nil && session != nil {
+				otCookies = len(session.HTTPCookies(auth.NetworkOpenTable))
+				tockCookies = len(session.HTTPCookies(auth.NetworkTock))
+			}
+			switch {
+			case sessErr != nil:
+				report["auth"] = fmt.Sprintf("error loading session: %s", sessErr)
+			case otCookies == 0 && tockCookies == 0:
+				report["auth"] = "no cookies imported (run `auth login --chrome` after signing in to opentable.com and exploretock.com in Chrome)"
+			default:
+				report["auth"] = fmt.Sprintf("opentable: %d cookies, tock: %d cookies", otCookies, tockCookies)
+			}
 
-			// Check auth environment variables
-
-			// Check API connectivity and validate credentials.
-			//
-			// The doctor uses the same client every other command uses --
-			// flags.newClient() returns a *client.Client wrapping whatever
-			// transport the spec declared (Surf for browser-chrome, stdlib
-			// for standard). A separate stdlib http.Client would silently
-			// bypass that choice and report false negatives against
-			// Cloudflare-fronted, Akamai-fronted, or otherwise bot-detected
-			// sites. By going through flags.newClient(), the doctor's
-			// reachability verdict matches what real commands experience.
-			if cfg != nil && cfg.BaseURL != "" {
-				c, clientErr := flags.newClient()
-				if clientErr != nil {
-					report["api"] = fmt.Sprintf("client init error: %s", clientErr)
-				} else {
-					// Step 1: Basic reachability via the configured transport.
-					reachBody, reachErr := c.Get("/", nil)
-					var reachAPIErr *client.APIError
-					switch {
-					case reachErr == nil:
-						// 2xx response — clearly reachable. Still inspect the
-						// body for a known interstitial; some bot walls return
-						// 200 with a JS challenge page.
-						if vendor := looksLikeDoctorInterstitial(reachBody); vendor != "" {
-							report["api"] = fmt.Sprintf("blocked by %s interstitial — the configured transport reached the wall. Try a different network, wait for the IP-level rate limit to clear, or check that the browser-chrome transport is bound correctly.", vendor)
+			// API probe: exercise OpenTable's Bootstrap via the working source
+			// client. Bootstrap navigates the Akamai-whitelisted /restaurant/profile/100
+			// path (NOT the bot-detected `/`), uses Surf's Chrome TLS
+			// fingerprint, and short-circuits when a 403-cooldown is active.
+			// Tock has no equivalent cheap probe (each venue is its own SSR
+			// page); we rely on cookie-jar freshness as a Tock readiness
+			// signal until a stable cheap Tock probe lands.
+			if session != nil {
+				otCli, otErr := opentable.New(session)
+				switch {
+				case otErr != nil:
+					report["api_opentable"] = fmt.Sprintf("client init: %s", otErr)
+				default:
+					ctx := cmd.Context()
+					if err := otCli.Bootstrap(ctx); err != nil {
+						if bde, ok := opentable.IsBotDetection(err); ok {
+							report["api_opentable"] = fmt.Sprintf("blocked by Akamai: %s — try `auth login --chrome` to refresh cookies", bde.Error())
 						} else {
-							report["api"] = "reachable"
+							report["api_opentable"] = fmt.Sprintf("unreachable: %s", err)
 						}
-					case errors.As(reachErr, &reachAPIErr):
-						// Non-2xx from the server. The network reached, the
-						// server responded — that's "reachable" for our
-						// purposes. Inspect the response body for a known
-						// interstitial first; otherwise note the status.
-						status := reachAPIErr.StatusCode
-						if vendor := looksLikeDoctorInterstitial([]byte(reachAPIErr.Body)); vendor != "" {
-							report["api"] = fmt.Sprintf("blocked by %s interstitial (HTTP %d) — the configured transport reached the wall.", vendor, status)
-						} else {
-							report["api"] = fmt.Sprintf("reachable (HTTP %d at /)", status)
-						}
-					default:
-						// Network-level failure: DNS, connection refused, TLS,
-						// transport init, etc. The transport itself didn't
-						// connect.
-						report["api"] = fmt.Sprintf("unreachable: %s", reachErr)
-					}
-
-					// Step 2: Validate credentials with an authenticated probe.
-					authHeader := cfg.AuthHeader()
-					if authHeader == "" {
-						// No auth configured — skip credential validation
-					} else if reachErr != nil && !errors.As(reachErr, &reachAPIErr) {
-						report["credentials"] = "skipped (API unreachable)"
 					} else {
-						verifyPath := "/"
-						authParams := map[string]string{}
-						authHeaders := map[string]string{}
-						authHeaders["Authorization"] = authHeader
-						authHeaders["User-Agent"] = "table-reservation-goat-pp-cli"
-						_, authErr := c.GetWithHeaders(verifyPath, authParams, authHeaders)
-						var authAPIErr *client.APIError
-						switch {
-						case authErr == nil:
-							report["credentials"] = "valid"
-						case errors.As(authErr, &authAPIErr):
-							switch {
-							case authAPIErr.StatusCode == 401 || authAPIErr.StatusCode == 403:
-								// The probe hit the bare base URL because no auth.verify_path
-								// is configured in the spec. Many APIs return 401/403 from a
-								// bare versioned root regardless of token validity (the path
-								// isn't routed but the gateway still demands credentials).
-								// Don't claim invalid without certainty — set verify_path to
-								// a known-good authenticated GET (e.g. /me, /v1/account, /user)
-								// for a definitive verdict.
-								report["credentials"] = fmt.Sprintf("inconclusive (HTTP %d from base URL — set auth.verify_path in spec for a definitive probe)", authAPIErr.StatusCode)
-							default:
-								// Non-auth HTTP error (404, 500, etc.) — don't blame credentials
-								report["credentials"] = fmt.Sprintf("ok (HTTP %d from %s, but auth was accepted)", authAPIErr.StatusCode, verifyPath)
-							}
-						default:
-							report["credentials"] = fmt.Sprintf("error: %s", authErr)
-						}
+						report["api_opentable"] = "reachable"
 					}
 				}
-			} else if cfg != nil && cfg.BaseURL == "" {
-				report["api"] = "not configured (set base_url in config file)"
+			} else if sessErr == nil {
+				report["api_opentable"] = "skipped (no session loaded)"
 			}
 			// Cache health: only reported when this CLI has a local store.
 			// Surfaces rows + last_synced_at per resource, schema version,
@@ -196,8 +156,7 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 				{"config", "Config"},
 				{"auth", "Auth"},
 				{"env_vars", "Env Vars"},
-				{"api", "API"},
-				{"credentials", "Credentials"},
+				{"api_opentable", "OpenTable"},
 			}
 			for _, ck := range checkKeys {
 				v, ok := report[ck.key]
