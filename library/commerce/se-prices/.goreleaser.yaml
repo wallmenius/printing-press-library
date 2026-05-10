@@ -1,0 +1,51 @@
+version: 2
+project_name: se-prices-pp-cli
+changelog:
+  disable: true
+builds:
+  - id: se-prices-pp-cli
+    main: ./cmd/se-prices-pp-cli
+    binary: se-prices-pp-cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/mvanhorn/printing-press-library/library/commerce/se-prices/internal/cli.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+  - id: se-prices-pp-mcp
+    main: ./cmd/se-prices-pp-mcp
+    binary: se-prices-pp-mcp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: checksums.txt
+brews:
+  - name: se-prices-pp-cli
+    repository:
+      owner: johan-wallmn
+      name: homebrew-tap
+    homepage: "https://github.com/mvanhorn/printing-press-library"
+    description: "Combined CLI for Prisjakt and PriceRunner with cross-site arbitrage, price-drop digests, and EAN-keyed lookups no..."
+    install: |
+      bin.install "se-prices-pp-cli"
+      bin.install "se-prices-pp-mcp"

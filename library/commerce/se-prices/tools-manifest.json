@@ -1,0 +1,156 @@
+{
+  "api_name": "se-prices",
+  "base_url": "https://www.prisjakt.nu",
+  "description": "Combined CLI for Prisjakt and PriceRunner with cross-site arbitrage, price-drop digests, and EAN-keyed lookups",
+  "mcp_ready": "full",
+  "http_transport": "browser-chrome",
+  "auth": {
+    "type": "none"
+  },
+  "required_headers": [
+    {
+      "name": "User-Agent",
+      "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    },
+    {
+      "name": "Accept-Language",
+      "value": "sv-SE,sv;q=0.9,en;q=0.8"
+    }
+  ],
+  "tools": [
+    {
+      "name": "pricerunner_category",
+      "description": "Browse a PriceRunner category. ID and slug come from the /cl/ URL pattern. Required: id, slug. Returns the PriceRunnerCategory.",
+      "method": "GET",
+      "path": "/cl/{id}/{slug}",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "id",
+          "type": "int",
+          "location": "path",
+          "description": "Category numeric ID (e.g., 1 for mobiltelefoner)",
+          "required": true
+        },
+        {
+          "name": "slug",
+          "type": "string",
+          "location": "path",
+          "description": "Category slug (e.g., Mobiltelefoner)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "pricerunner_deals",
+      "description": "List PriceRunner curated deals. Returns array of PriceRunnerDeal.",
+      "method": "GET",
+      "path": "/deals",
+      "no_auth": true,
+      "params": []
+    },
+    {
+      "name": "pricerunner_product",
+      "description": "Get PriceRunner product detail. ID path is the \u003cgroup\u003e-\u003cnumeric\u003e/\u003ccategory\u003e/\u003cslug\u003e-priser segment (e.g., 1-3208336567/Mobiltelefoner/Apple-iPhone-15-Pro-Max-256GB-Natural-Titanium-priser). Required: id. Returns the PriceRunnerProduct.",
+      "method": "GET",
+      "path": "/pl/{id_path}",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "id",
+          "wire_name": "id_path",
+          "type": "string",
+          "location": "path",
+          "description": "PriceRunner product path (group-id/category/slug-priser)",
+          "required": true,
+          "aliases": [
+            "id-path"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pricerunner_search",
+      "description": "Search PriceRunner products by name. Returns the search results from initial_payload. Required: query.",
+      "method": "GET",
+      "path": "/results",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Search text",
+          "required": true,
+          "aliases": [
+            "q"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prisjakt_category",
+      "description": "Browse a Prisjakt category page. Returns the productCollection from window.__REACT_QUERY_STATE__. Required: slug. Optional: brand.",
+      "method": "GET",
+      "path": "/c/{slug}",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "slug",
+          "type": "string",
+          "location": "path",
+          "description": "Category slug (e.g., mobiltelefoner, datorer)",
+          "required": true
+        },
+        {
+          "name": "brand",
+          "type": "int",
+          "location": "query",
+          "description": "Filter by brand ID"
+        }
+      ]
+    },
+    {
+      "name": "prisjakt_product",
+      "description": "Get Prisjakt product detail by ID. Returns the full product object including offers, ratings, brand, category, and badges. Required: id.",
+      "method": "GET",
+      "path": "/produkt.php",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "id",
+          "wire_name": "p",
+          "type": "int",
+          "location": "query",
+          "description": "Prisjakt product ID (e.g., 14969878)",
+          "required": true,
+          "aliases": [
+            "p"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "prisjakt_search",
+      "description": "Search Prisjakt products by name. Returns the matching product list. Required: query.",
+      "method": "GET",
+      "path": "/search",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "search",
+          "type": "string",
+          "location": "query",
+          "description": "Search text (Swedish or English)",
+          "required": true,
+          "aliases": [
+            "q",
+            "search"
+          ]
+        }
+      ]
+    }
+  ]
+}

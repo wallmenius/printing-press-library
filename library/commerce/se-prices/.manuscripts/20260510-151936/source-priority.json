@@ -1,0 +1,16 @@
+{
+  "sources": ["prisjakt", "pricerunner"],
+  "ordering_kind": "equal_peers",
+  "readme_lead": "prisjakt",
+  "readme_lead_reason": "user listed prisjakt first; equal-peers means one still leads README prose",
+  "confirmed_at": "2026-05-10T13:19:36Z",
+  "raw_user_phrasing": "https://www.prisjakt.nu/ and https://www.pricerunner.se/ combined",
+  "source_urls": {
+    "prisjakt": "https://www.prisjakt.nu/",
+    "pricerunner": "https://www.pricerunner.se/"
+  },
+  "auth_scoping": {
+    "decision": "no-paid-tier-detected",
+    "notes": "Both sites are free price-comparison aggregators with no documented public API. No paid-key economics tradeoff at this stage."
+  }
+}

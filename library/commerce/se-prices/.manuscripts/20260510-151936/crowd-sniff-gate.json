@@ -1,0 +1,5 @@
+{
+  "run_id": "20260510-151936",
+  "decision": "skip-silent",
+  "reason": "research found only abandoned/dead community wrappers (freedick/prisjakt targeting retired PHP endpoints, rstaniek/pricerunner-product-notifications scraping pricerunner.dk HTML); no maintained npm/PyPI/Go SDKs to mine for endpoints"
+}

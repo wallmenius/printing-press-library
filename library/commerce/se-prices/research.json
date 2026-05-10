@@ -1,0 +1,244 @@
+{
+  "api_name": "se-prices",
+  "novelty_score": 8,
+  "alternatives": [],
+  "gaps": [],
+  "patterns": [],
+  "recommendation": "proceed",
+  "researched_at": "2026-05-10T13:35:00Z",
+  "novel_features": [
+    {
+      "name": "Cross-site arbitrage scan",
+      "command": "arbitrage",
+      "description": "Find products where one comparator's lowest offer beats the other by at least your gap threshold.",
+      "rationale": "Requires a synced cross-source product join keyed on EAN with fallback to normalized title — neither site offers this view.",
+      "example": "se-prices-pp-cli arbitrage --category mobiltelefoner --min-gap 10 --agent --select product_name,prisjakt_price,pricerunner_price,gap_pct",
+      "why_it_matters": "Reach for this when an agent needs to identify dropshipping or discount opportunities by comparing the two indexes; only this CLI has the cross-source lowest-per-site computation.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Stock-aware best-of-both lowest",
+      "command": "lowest",
+      "description": "Cheapest current offer for a query across both sites, optionally filtered by stock and shipping cap.",
+      "rationale": "Requires querying both sources' offers and computing MIN(price + shipping) over the joined set with stock filter — no single-site call returns this.",
+      "example": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --max-shipping 99 --agent",
+      "why_it_matters": "Pick this when a user names a product and asks for the best price right now; one call returns the unified answer instead of an agent juggling two calls.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "EAN cross-link",
+      "command": "ean",
+      "description": "Resolve an EAN to both Prisjakt and PriceRunner product IDs and return the union of current offers.",
+      "rationale": "Requires a local product table with EAN columns sourced from both sites; neither comparator exposes the other's product key.",
+      "example": "se-prices-pp-cli ean 0194253433927 --agent",
+      "why_it_matters": "Use when the user has an EAN/GTIN from a manufacturer page or barcode scan and wants to short-circuit name-based search.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Catalogue diff per category",
+      "command": "catalogue-diff",
+      "description": "Products that appear in one site's category index but are missing from the other.",
+      "rationale": "Requires set-difference SQL across both sources' category-tagged product tables after a fresh sync — only possible with a unified local store.",
+      "example": "se-prices-pp-cli catalogue-diff --category mobiltelefoner --only prisjakt --agent --select product_name,brand,prisjakt_lowest",
+      "why_it_matters": "Reach for this to spot niche Swedish merchants or rare SKUs only one comparator indexes.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Cross-site price-drop digest",
+      "command": "drops",
+      "description": "Watched products whose latest snapshot is at least your percentage threshold below the snapshot at the start of the window.",
+      "rationale": "Requires a price_snapshot time series populated by repeated sync runs joined to a tracked_product list — no comparator surfaces drops across both sites in one query.",
+      "example": "se-prices-pp-cli drops --since 7d --min-pct 10 --watched-only --agent",
+      "why_it_matters": "Use as the daily or weekly digest when an agent is reporting deal flow on a user's wishlist.",
+      "group": "Local watch + drops"
+    },
+    {
+      "name": "Cross-site watchlist with thresholds",
+      "command": "watchlist",
+      "description": "Track products by ID or EAN with a maximum price; check whether any tracked item is at or below threshold across either site.",
+      "rationale": "Requires a local tracked_product table joined against current offers from both sources — no single comparator unifies bookmarks across the two sites.",
+      "example": "se-prices-pp-cli watchlist check --agent --select product_name,best_offer.site,best_offer.price_sek",
+      "why_it_matters": "Reach for this when an agent maintains a user's shopping list and surfaces threshold-met items without checking each site separately.",
+      "group": "Local watch + drops"
+    },
+    {
+      "name": "Unified cross-site price history",
+      "command": "history-combo",
+      "description": "Merged time series of price snapshots from both sources for one product, resolved via EAN.",
+      "rationale": "Requires merging snapshots tagged per source on a stable product key — the brief explicitly notes neither site exposes the other's history.",
+      "example": "se-prices-pp-cli history-combo --ean 0194253433927 --window 60 --csv",
+      "why_it_matters": "Use when answering trend questions or producing graphs that need both sites' historical observations.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Sale-season anomaly check",
+      "command": "is-sale",
+      "description": "Compare the current price against the local 90-day median to flag sticker-stuffed sales.",
+      "rationale": "Requires window-aware median over the price_snapshot table — pure local statistics, no API call returns this.",
+      "example": "se-prices-pp-cli is-sale 14969878 --window 90 --agent",
+      "why_it_matters": "Reach for this when a Black Week or summer-sale claim looks suspicious and you want a mechanical answer.",
+      "group": "Local watch + drops"
+    }
+  ],
+  "novel_features_built": [
+    {
+      "name": "Cross-site arbitrage scan",
+      "command": "arbitrage",
+      "description": "Find products where one comparator's lowest offer beats the other by at least your gap threshold.",
+      "rationale": "Requires a synced cross-source product join keyed on EAN with fallback to normalized title — neither site offers this view.",
+      "example": "se-prices-pp-cli arbitrage --category mobiltelefoner --min-gap 10 --agent --select product_name,prisjakt_price,pricerunner_price,gap_pct",
+      "why_it_matters": "Reach for this when an agent needs to identify dropshipping or discount opportunities by comparing the two indexes; only this CLI has the cross-source lowest-per-site computation.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Stock-aware best-of-both lowest",
+      "command": "lowest",
+      "description": "Cheapest current offer for a query across both sites, optionally filtered by stock and shipping cap.",
+      "rationale": "Requires querying both sources' offers and computing MIN(price + shipping) over the joined set with stock filter — no single-site call returns this.",
+      "example": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --max-shipping 99 --agent",
+      "why_it_matters": "Pick this when a user names a product and asks for the best price right now; one call returns the unified answer instead of an agent juggling two calls.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "EAN cross-link",
+      "command": "ean",
+      "description": "Resolve an EAN to both Prisjakt and PriceRunner product IDs and return the union of current offers.",
+      "rationale": "Requires a local product table with EAN columns sourced from both sites; neither comparator exposes the other's product key.",
+      "example": "se-prices-pp-cli ean 0194253433927 --agent",
+      "why_it_matters": "Use when the user has an EAN/GTIN from a manufacturer page or barcode scan and wants to short-circuit name-based search.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Catalogue diff per category",
+      "command": "catalogue-diff",
+      "description": "Products that appear in one site's category index but are missing from the other.",
+      "rationale": "Requires set-difference SQL across both sources' category-tagged product tables after a fresh sync — only possible with a unified local store.",
+      "example": "se-prices-pp-cli catalogue-diff --category mobiltelefoner --only prisjakt --agent --select product_name,brand,prisjakt_lowest",
+      "why_it_matters": "Reach for this to spot niche Swedish merchants or rare SKUs only one comparator indexes.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Cross-site price-drop digest",
+      "command": "drops",
+      "description": "Watched products whose latest snapshot is at least your percentage threshold below the snapshot at the start of the window.",
+      "rationale": "Requires a price_snapshot time series populated by repeated sync runs joined to a tracked_product list — no comparator surfaces drops across both sites in one query.",
+      "example": "se-prices-pp-cli drops --since 7d --min-pct 10 --watched-only --agent",
+      "why_it_matters": "Use as the daily or weekly digest when an agent is reporting deal flow on a user's wishlist.",
+      "group": "Local watch + drops"
+    },
+    {
+      "name": "Cross-site watchlist with thresholds",
+      "command": "watchlist",
+      "description": "Track products by ID or EAN with a maximum price; check whether any tracked item is at or below threshold across either site.",
+      "rationale": "Requires a local tracked_product table joined against current offers from both sources — no single comparator unifies bookmarks across the two sites.",
+      "example": "se-prices-pp-cli watchlist check --agent --select product_name,best_offer.site,best_offer.price_sek",
+      "why_it_matters": "Reach for this when an agent maintains a user's shopping list and surfaces threshold-met items without checking each site separately.",
+      "group": "Local watch + drops"
+    },
+    {
+      "name": "Unified cross-site price history",
+      "command": "history-combo",
+      "description": "Merged time series of price snapshots from both sources for one product, resolved via EAN.",
+      "rationale": "Requires merging snapshots tagged per source on a stable product key — the brief explicitly notes neither site exposes the other's history.",
+      "example": "se-prices-pp-cli history-combo --ean 0194253433927 --window 60 --csv",
+      "why_it_matters": "Use when answering trend questions or producing graphs that need both sites' historical observations.",
+      "group": "Cross-site combo"
+    },
+    {
+      "name": "Sale-season anomaly check",
+      "command": "is-sale",
+      "description": "Compare the current price against the local 90-day median to flag sticker-stuffed sales.",
+      "rationale": "Requires window-aware median over the price_snapshot table — pure local statistics, no API call returns this.",
+      "example": "se-prices-pp-cli is-sale 14969878 --window 90 --agent",
+      "why_it_matters": "Reach for this when a Black Week or summer-sale claim looks suspicious and you want a mechanical answer.",
+      "group": "Local watch + drops"
+    }
+  ],
+  "narrative": {
+    "display_name": "SE Prices",
+    "headline": "Combined CLI for Prisjakt and PriceRunner with cross-site arbitrage, price-drop digests, and EAN-keyed lookups no single-site tool offers.",
+    "value_prop": "se-prices syncs both Swedish price-comparison aggregators into a local SQLite store and exposes commands neither site can: `arbitrage` finds gaps between the two indexes, `lowest` returns the cheapest in-stock offer across both in one call, `history-combo` merges price-snapshot time series, and `watchlist` cross-checks your bookmarks against both sources. Per-site commands stay first-class so agents can drill in when needed.",
+    "auth_narrative": "No authentication required. Both sites are read from their public SSR HTML state. Prisjakt's search route clears its Cloudflare challenge via Surf with a Chrome TLS fingerprint; everything else uses plain stdlib HTTP with a browser user agent.",
+    "quickstart": [
+      {
+        "command": "se-prices-pp-cli doctor",
+        "comment": "Verify reachability for both sources and inspect the local store."
+      },
+      {
+        "command": "se-prices-pp-cli sep-sync --source both --categories mobiltelefoner",
+        "comment": "Populate the local store from one category on both sites — fastest path to a useful local index."
+      },
+      {
+        "command": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock",
+        "comment": "Cross-site cheapest in-stock offer in one call — the headline workflow."
+      },
+      {
+        "command": "se-prices-pp-cli arbitrage --category mobiltelefoner --min-gap 10 --json",
+        "comment": "Find products where one site undercuts the other by at least 10% — ranked by absolute SEK saved."
+      },
+      {
+        "command": "se-prices-pp-cli watchlist add 14969878 --max 9990",
+        "comment": "Track an iPhone product across both sites; the next `watchlist check` reports whether either site offers it at your max."
+      }
+    ],
+    "troubleshoots": [
+      {
+        "symptom": "Prisjakt search returns 403 or a Cloudflare \"Just a moment\" page.",
+        "fix": "Run `se-prices-pp-cli doctor` to confirm Surf transport is active for Prisjakt search; the CLI auto-selects Surf for that route. If it still fails, set `SE_PRICES_TRANSPORT=surf` to force the Chrome TLS fingerprint."
+      },
+      {
+        "symptom": "`arbitrage` or `lowest` returns empty results.",
+        "fix": "Run `se-prices-pp-cli sync --source both --category \u003cslug\u003e` first; the local store is empty until you sync at least one category from each site."
+      },
+      {
+        "symptom": "Cross-site match not found for a known product.",
+        "fix": "Inspect the EAN with `prisjakt product \u003cid\u003e --select ean` and `pricerunner product \u003cid\u003e --select ean`; if either side is missing the EAN, fall back to `lowest \"\u003cproduct name\u003e\" --fuzzy-name`."
+      },
+      {
+        "symptom": "`pricerunner search` returns 403.",
+        "fix": "PriceRunner blocks raw curl-style user agents on `/results`; the CLI sends a real browser UA by default. If you've set `SE_PRICES_USER_AGENT` to something terse, unset it."
+      },
+      {
+        "symptom": "Price snapshots are stale.",
+        "fix": "Snapshots are written by `sync` and the watch commands; schedule `se-prices-pp-cli sync --source both --watched-only` on a cron to keep `drops`, `is-sale`, and `history-combo` accurate."
+      }
+    ],
+    "when_to_use": "Pick se-prices when an agent needs to compare Swedish retail prices across both Prisjakt and PriceRunner. It is the right tool when the user names a product, EAN/GTIN, or category and wants the lowest cross-site offer, an arbitrage gap, a merged price history, or a wishlist threshold check. Skip it for non-Swedish retail and for live realtime checks beyond the most recent sync — the analytical commands read the local snapshot store, not the live APIs.",
+    "recipes": [
+      {
+        "title": "Tonight's lowest in-stock iPhone offer across both sites",
+        "command": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --max-shipping 99 --agent --select best_offer.site,best_offer.merchant,best_offer.price_sek,best_offer.url",
+        "explanation": "Cross-site min price filtered by stock and shipping cap; --select narrows the response so the agent doesn't pay for the full ProductList payload."
+      },
+      {
+        "title": "Daily Black Week arbitrage sweep on TVs",
+        "command": "se-prices-pp-cli arbitrage --category tv --min-gap 8 --min-sek 500 --agent --select product_name,prisjakt_price,pricerunner_price,gap_pct,gap_sek",
+        "explanation": "Surfaces only ≥8% gaps worth at least 500 SEK; pair with a daily cron to catch Black Week and Mellandagsrea price moves."
+      },
+      {
+        "title": "Wishlist check across both sites",
+        "command": "se-prices-pp-cli watchlist check --agent --select product_name,target_max_sek,best_offer.site,best_offer.price_sek,below_threshold",
+        "explanation": "Returns each tracked product's best current cross-site offer plus a boolean for threshold-met items."
+      },
+      {
+        "title": "Is the current Black Week price actually a sale?",
+        "command": "se-prices-pp-cli is-sale 14969878 --window 90 --agent",
+        "explanation": "Compares current price against the 90-day median from the local snapshot store; flags sticker-stuffed sales as `actually_a_sale: false`."
+      },
+      {
+        "title": "Unified 60-day price history for an EAN",
+        "command": "se-prices-pp-cli history-combo --ean 0194253433927 --window 60 --csv",
+        "explanation": "Merges price snapshots from both sources into one time series, CSV for spreadsheet plotting; works only if both sites have synced the EAN at least twice in the window."
+      }
+    ],
+    "trigger_phrases": [
+      "compare prices on prisjakt and pricerunner",
+      "find arbitrage on swedish electronics",
+      "lowest swedish price for",
+      "watch this product for price drops in sweden",
+      "is this a real black week deal",
+      "use se-prices",
+      "run se-prices"
+    ]
+  }
+}

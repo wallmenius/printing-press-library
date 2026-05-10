@@ -1,0 +1,17 @@
+{
+  "run_id": "20260510-151936",
+  "sources": [
+    {
+      "source_name": "prisjakt",
+      "decision": "declined",
+      "reason": "user picked direct discovery; reachability shows stdlib for category pages with JSON-LD and Surf for search",
+      "asked_at": "2026-05-10T13:30:20Z"
+    },
+    {
+      "source_name": "pricerunner",
+      "decision": "declined",
+      "reason": "user picked direct discovery; reachability shows stdlib for /search SSR HTML and /pl/<id>/ product pages; internal /api/* not needed",
+      "asked_at": "2026-05-10T13:30:20Z"
+    }
+  ]
+}

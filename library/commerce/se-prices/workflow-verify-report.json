@@ -1,0 +1,8 @@
+{
+  "dir": "/home/wallmen/printing-press/.runstate/cli-printing-press-8000c45d/runs/20260510-151936/working/se-prices-pp-cli",
+  "workflows": null,
+  "verdict": "workflow-pass",
+  "issues": [
+    "no workflow manifest found, skipping"
+  ]
+}

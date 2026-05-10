@@ -1,0 +1,244 @@
+name: se-prices
+display_name: "SE Prices"
+description: "Combined CLI for Prisjakt and PriceRunner with cross-site arbitrage, price-drop digests, and EAN-keyed lookups"
+version: "0.1.0"
+category: commerce
+base_url: "https://www.prisjakt.nu"
+http_transport: browser-chrome
+health_check_path: "/c/mobiltelefoner"
+
+required_headers:
+  - name: User-Agent
+    value: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  - name: Accept-Language
+    value: "sv-SE,sv;q=0.9,en;q=0.8"
+
+auth:
+  type: none
+
+config:
+  format: toml
+  path: "~/.config/se-prices-pp-cli/config.toml"
+
+resources:
+  prisjakt:
+    description: "Prisjakt.nu — Sweden's leading price-comparison aggregator (read-only via SSR HTML state)"
+    endpoints:
+      search:
+        method: GET
+        path: "/search"
+        description: "Search Prisjakt products by name. Returns the matching product list."
+        response_format: html
+        html_extract:
+          mode: page
+        params:
+          - name: search
+            flag_name: query
+            aliases: [q, search]
+            type: string
+            required: true
+            description: "Search text (Swedish or English)"
+        response:
+          type: object
+          item: PrisjaktSearchResult
+        no_auth: true
+
+      category:
+        method: GET
+        path: "/c/{slug}"
+        description: "Browse a Prisjakt category page. Returns the productCollection from window.__REACT_QUERY_STATE__."
+        response_format: html
+        html_extract:
+          mode: page
+        params:
+          - name: slug
+            type: string
+            required: true
+            positional: true
+            description: "Category slug (e.g., mobiltelefoner, datorer)"
+          - name: brand
+            type: int
+            required: false
+            description: "Filter by brand ID"
+        response:
+          type: object
+          item: PrisjaktCategory
+        no_auth: true
+
+      product:
+        method: GET
+        path: "/produkt.php"
+        description: "Get Prisjakt product detail by ID. Returns the full product object including offers, ratings, brand, category, and badges."
+        response_format: html
+        html_extract:
+          mode: page
+        params:
+          - name: p
+            flag_name: id
+            aliases: [p]
+            type: int
+            required: true
+            description: "Prisjakt product ID (e.g., 14969878)"
+        response:
+          type: object
+          item: PrisjaktProduct
+        no_auth: true
+
+  pricerunner:
+    description: "PriceRunner.se — Klarna-owned price-comparison aggregator (read-only via SSR initial_payload)"
+    base_url: "https://www.pricerunner.se"
+    endpoints:
+      search:
+        method: GET
+        path: "/results"
+        description: "Search PriceRunner products by name. Returns the search results from initial_payload."
+        response_format: html
+        html_extract:
+          mode: embedded-json
+          script_selector: "script#initial_payload"
+        params:
+          - name: q
+            flag_name: query
+            aliases: [q]
+            type: string
+            required: true
+            description: "Search text"
+        response:
+          type: object
+          item: PriceRunnerSearchResult
+        no_auth: true
+
+      product:
+        method: GET
+        path: "/pl/{id_path}"
+        description: "Get PriceRunner product detail. ID path is the <group>-<numeric>/<category>/<slug>-priser segment (e.g., 1-3208336567/Mobiltelefoner/Apple-iPhone-15-Pro-Max-256GB-Natural-Titanium-priser)."
+        response_format: html
+        html_extract:
+          mode: embedded-json
+          script_selector: "script#initial_payload"
+          json_path: "__INITIAL_PROPS__.ProductList"
+        params:
+          - name: id_path
+            flag_name: id
+            aliases: [id-path]
+            type: string
+            required: true
+            positional: true
+            description: "PriceRunner product path (group-id/category/slug-priser)"
+        response:
+          type: object
+          item: PriceRunnerProduct
+        no_auth: true
+
+      category:
+        method: GET
+        path: "/cl/{id}/{slug}"
+        description: "Browse a PriceRunner category. ID and slug come from the /cl/ URL pattern."
+        response_format: html
+        html_extract:
+          mode: embedded-json
+          script_selector: "script#initial_payload"
+        params:
+          - name: id
+            type: int
+            required: true
+            positional: true
+            description: "Category numeric ID (e.g., 1 for mobiltelefoner)"
+          - name: slug
+            type: string
+            required: true
+            positional: true
+            description: "Category slug (e.g., Mobiltelefoner)"
+        response:
+          type: object
+          item: PriceRunnerCategory
+        no_auth: true
+
+      deals:
+        method: GET
+        path: "/deals"
+        description: "List PriceRunner curated deals."
+        response_format: html
+        html_extract:
+          mode: embedded-json
+          script_selector: "script#initial_payload"
+        response:
+          type: array
+          item: PriceRunnerDeal
+        no_auth: true
+
+types:
+  PrisjaktSearchResult:
+    fields:
+      - name: products
+        type: string
+      - name: total
+        type: int
+
+  PrisjaktCategory:
+    fields:
+      - name: name
+        type: string
+      - name: slug
+        type: string
+      - name: products
+        type: string
+      - name: total
+        type: int
+
+  PrisjaktProduct:
+    fields:
+      - name: id
+        type: int
+      - name: name
+        type: string
+      - name: brand
+        type: string
+      - name: category
+        type: string
+      - name: lowest_price_sek
+        type: int
+      - name: stock_status
+        type: string
+
+  PriceRunnerSearchResult:
+    fields:
+      - name: products
+        type: string
+      - name: total
+        type: int
+
+  PriceRunnerProduct:
+    fields:
+      - name: id
+        type: string
+      - name: name
+        type: string
+      - name: brand
+        type: string
+      - name: category
+        type: string
+      - name: lowest_price_sek
+        type: int
+      - name: stock_status
+        type: string
+
+  PriceRunnerCategory:
+    fields:
+      - name: id
+        type: int
+      - name: name
+        type: string
+      - name: products
+        type: string
+
+  PriceRunnerDeal:
+    fields:
+      - name: id
+        type: string
+      - name: title
+        type: string
+      - name: price_sek
+        type: int
+      - name: discount_pct
+        type: int

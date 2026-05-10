@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "api_name": "se-prices",
+  "run_id": "20260510-151936",
+  "status": "pass",
+  "level": "full",
+  "matrix_size": 78,
+  "tests_passed": 78,
+  "tests_skipped": 49,
+  "auth_context": {
+    "type": "none"
+  }
+}

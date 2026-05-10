@@ -1,0 +1,16 @@
+{
+  "verdict": "pass",
+  "sources": {
+    "prisjakt": {
+      "category": {"url": "/c/<slug>", "mode": "standard_http", "data": "REACT_QUERY_STATE -> productCollection"},
+      "product": {"url": "/produkt.php?p=<id>", "mode": "standard_http", "data": "REACT_QUERY_STATE -> product (rich)"},
+      "search": {"url": "/search?search=<q>", "mode": "browser_http", "data": "Cloudflare challenge cleared by Surf"}
+    },
+    "pricerunner": {
+      "search": {"url": "/results?q=<q>", "mode": "standard_http", "data": "initial_payload -> __DEHYDRATED_QUERY_STATE__ + Results"},
+      "product": {"url": "/pl/<group>-<id>/...", "mode": "standard_http", "data": "initial_payload -> __INITIAL_PROPS__.ProductList + reviewsPL + priceHistoryPL"},
+      "category": {"url": "/cl/<id>/<slug>", "mode": "standard_http", "data": "initial_payload"}
+    }
+  },
+  "notes": "Both sites embed full SSR JSON state in HTML. No live API calls needed. Prisjakt search is the only endpoint requiring Surf (browser-compatible HTTP); everything else is plain stdlib with browser UA. Internal /api/*.json on PriceRunner is hard-walled but unnecessary."
+}
