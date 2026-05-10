@@ -60,7 +60,7 @@ These capabilities aren't available in any other tool for this API.
   _Pick this when a user names a product and asks for the best price right now; one call returns the unified answer instead of an agent juggling two calls._
 
   ```bash
-  se-prices-pp-cli lowest "iPhone 15 Pro Max" --in-stock --max-shipping 99 --agent
+  se-prices-pp-cli lowest "iPhone 15 Pro Max" --in-stock --agent
   ```
 - **`ean`** — Resolve an EAN to both Prisjakt and PriceRunner product IDs and return the union of current offers.
 
@@ -143,7 +143,7 @@ se-prices-pp-cli which "<capability in your own words>"
 ### Tonight's lowest in-stock iPhone offer across both sites
 
 ```bash
-se-prices-pp-cli lowest "iPhone 15 Pro Max" --in-stock --max-shipping 99 --agent --select best_offer.site,best_offer.merchant,best_offer.price_sek,best_offer.url
+se-prices-pp-cli lowest "iPhone 15 Pro Max" --in-stock --agent --select best_offer.site,best_offer.merchant,best_offer.price_sek,best_offer.url
 ```
 
 Cross-site min price filtered by stock and shipping cap; --select narrows the response so the agent doesn't pay for the full ProductList payload.

@@ -36,16 +36,18 @@ type lowestProduct struct {
 
 func newLowestCmd(flags *rootFlags) *cobra.Command {
 	var (
-		flagInStock     bool
-		flagMaxShipping float64
-		flagEAN         string
+		flagInStock bool
+		flagEAN     string
 	)
 	cmd := &cobra.Command{
 		Use:   "lowest [query]",
 		Short: "Cheapest current offer across both Prisjakt and PriceRunner.",
 		Long: "Issues a search to both sites, then returns the lowest current price across them.\n" +
-			"With --in-stock the search is filtered to in-stock listings; --max-shipping caps shipping cost.\n" +
-			"With --ean a known barcode is preferred over a name search.",
+			"With --in-stock the search is filtered to in-stock listings.\n" +
+			"With --ean a known barcode is preferred over a name search.\n\n" +
+			"Note: shipping cost is not surfaced by either site's search payload, so this\n" +
+			"command compares offer-list prices only. To filter by shipping, fetch product\n" +
+			"detail with `prisjakt product` / `pricerunner product` after picking a candidate.",
 		Example: "  se-prices-pp-cli lowest \"iPhone 15 Pro Max\"\n" +
 			"  se-prices-pp-cli lowest \"sony wh-1000xm5\" --in-stock --json --select best_offer.site,best_offer.lowest_price_sek\n" +
 			"  se-prices-pp-cli lowest --ean 0194253433927",
@@ -130,12 +132,10 @@ func newLowestCmd(flags *rootFlags) *cobra.Command {
 			if result.BestOffer == nil {
 				result.Reason = "no offers found across both sites"
 			}
-			_ = flagMaxShipping // Reserved: shipping not exposed by search payloads; resolved via product detail
 			return printJSONFiltered(cmd.OutOrStdout(), result, flags)
 		},
 	}
 	cmd.Flags().BoolVar(&flagInStock, "in-stock", false, "Filter to in-stock offers only")
-	cmd.Flags().Float64Var(&flagMaxShipping, "max-shipping", 0, "Maximum shipping cost in SEK (resolved via product detail; reserved)")
 	cmd.Flags().StringVar(&flagEAN, "ean", "", "Search by EAN/GTIN instead of free text")
 	return cmd
 }

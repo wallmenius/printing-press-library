@@ -1118,6 +1118,14 @@ func (s *Store) ResolveByName(resourceType string, input string, matchFields ...
 
 	var matches []string
 	for _, field := range matchFields {
+		// field is interpolated into a JSON-path expression '$.<field>' which
+		// cannot be parameterized. Reject anything that isn't a SQL identifier
+		// so callers can't smuggle quotes, semicolons, or comment markers
+		// through `matchFields ...string`. Fields that fail the check are
+		// silently skipped, matching the existing per-field error tolerance.
+		if !isSafeSQLIdentifier(field) {
+			continue
+		}
 		query := fmt.Sprintf(
 			`SELECT id FROM resources WHERE resource_type = ? AND LOWER(json_extract(data, '$.%s')) = LOWER(?)`,
 			field,

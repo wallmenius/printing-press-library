@@ -5,7 +5,6 @@ package cli
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -93,31 +92,55 @@ func computeArbitrage(products []store.SEProduct, minGapPct, minSEK float64) []a
 		Prisjakt  *store.SEProduct
 		Pricerunn *store.SEProduct
 	}
+	// Single bucket pool with two index maps that may alias the same bucket.
+	// Previously byEAN and byName were independent: a product carrying an EAN
+	// landed in byEAN, while another product with no EAN but the same name
+	// landed in byName, so both maps could produce a pair for what is
+	// conceptually the same product — duplicates in the output. Now whenever
+	// a product carries both an EAN and a name, both index entries point to
+	// the same bucket, and `seen` deduplicates at collection time so each
+	// physical bucket is processed exactly once.
 	byEAN := map[string]*bucket{}
 	byName := map[string]*bucket{}
+
+	resolveBucket := func(eanKey, nameKey string) *bucket {
+		var b *bucket
+		if eanKey != "" {
+			b = byEAN[eanKey]
+		}
+		if b == nil && nameKey != "" {
+			b = byName[nameKey]
+		}
+		if b == nil {
+			b = &bucket{}
+		}
+		// Wire both keys to the resolved bucket so the next product with
+		// either key joins the same bucket.
+		if eanKey != "" {
+			byEAN[eanKey] = b
+		}
+		if nameKey != "" {
+			byName[nameKey] = b
+		}
+		return b
+	}
+
 	for i := range products {
 		p := &products[i]
-		key := ""
-		var b *bucket
+		eanKey := ""
 		if p.EAN != "" {
-			key = "ean:" + p.EAN
-			b = byEAN[key]
+			eanKey = "ean:" + p.EAN
 		}
-		if b == nil {
-			nk := normalizeName(p.Name)
-			if nk == "" {
-				continue
-			}
-			key = "name:" + nk
-			b = byName[key]
+		nameKey := ""
+		if nk := normalizeName(p.Name); nk != "" {
+			nameKey = "name:" + nk
 		}
-		if b == nil {
-			b = &bucket{Name: p.Name}
-			if strings.HasPrefix(key, "ean:") {
-				byEAN[key] = b
-			} else {
-				byName[key] = b
-			}
+		if eanKey == "" && nameKey == "" {
+			continue
+		}
+		b := resolveBucket(eanKey, nameKey)
+		if b.Name == "" {
+			b.Name = p.Name
 		}
 		switch p.Source {
 		case "prisjakt":
@@ -130,9 +153,15 @@ func computeArbitrage(products []store.SEProduct, minGapPct, minSEK float64) []a
 			}
 		}
 	}
+
 	var out []arbitrageRow
+	seen := map[*bucket]struct{}{}
 	collect := func(buckets map[string]*bucket) {
 		for _, b := range buckets {
+			if _, dup := seen[b]; dup {
+				continue
+			}
+			seen[b] = struct{}{}
 			if b.Prisjakt == nil || b.Pricerunn == nil {
 				continue
 			}

@@ -21,7 +21,7 @@
       "command": "lowest",
       "description": "Cheapest current offer for a query across both sites, optionally filtered by stock and shipping cap.",
       "rationale": "Requires querying both sources' offers and computing MIN(price + shipping) over the joined set with stock filter — no single-site call returns this.",
-      "example": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --max-shipping 99 --agent",
+      "example": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --agent",
       "why_it_matters": "Pick this when a user names a product and asks for the best price right now; one call returns the unified answer instead of an agent juggling two calls.",
       "group": "Cross-site combo"
     },
@@ -95,7 +95,7 @@
       "command": "lowest",
       "description": "Cheapest current offer for a query across both sites, optionally filtered by stock and shipping cap.",
       "rationale": "Requires querying both sources' offers and computing MIN(price + shipping) over the joined set with stock filter — no single-site call returns this.",
-      "example": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --max-shipping 99 --agent",
+      "example": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --agent",
       "why_it_matters": "Pick this when a user names a product and asks for the best price right now; one call returns the unified answer instead of an agent juggling two calls.",
       "group": "Cross-site combo"
     },
@@ -188,11 +188,11 @@
       },
       {
         "symptom": "`arbitrage` or `lowest` returns empty results.",
-        "fix": "Run `se-prices-pp-cli sync --source both --category \u003cslug\u003e` first; the local store is empty until you sync at least one category from each site."
+        "fix": "Run `se-prices-pp-cli sync --source both --category <slug>` first; the local store is empty until you sync at least one category from each site."
       },
       {
         "symptom": "Cross-site match not found for a known product.",
-        "fix": "Inspect the EAN with `prisjakt product \u003cid\u003e --select ean` and `pricerunner product \u003cid\u003e --select ean`; if either side is missing the EAN, fall back to `lowest \"\u003cproduct name\u003e\" --fuzzy-name`."
+        "fix": "Inspect the EAN with `prisjakt product <id> --select ean` and `pricerunner product <id> --select ean`; if either side is missing the EAN, fall back to `lowest \"<product name>\" --fuzzy-name`."
       },
       {
         "symptom": "`pricerunner search` returns 403.",
@@ -207,7 +207,7 @@
     "recipes": [
       {
         "title": "Tonight's lowest in-stock iPhone offer across both sites",
-        "command": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --max-shipping 99 --agent --select best_offer.site,best_offer.merchant,best_offer.price_sek,best_offer.url",
+        "command": "se-prices-pp-cli lowest \"iPhone 15 Pro Max\" --in-stock --agent --select best_offer.site,best_offer.merchant,best_offer.price_sek,best_offer.url",
         "explanation": "Cross-site min price filtered by stock and shipping cap; --select narrows the response so the agent doesn't pay for the full ProductList payload."
       },
       {

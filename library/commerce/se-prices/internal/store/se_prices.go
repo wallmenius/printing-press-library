@@ -9,7 +9,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -61,16 +60,17 @@ type SEWatchedItem struct {
 	AddedAt     string  `json:"added_at,omitempty"`
 }
 
-var (
-	seSchemaOnce sync.Once
-	seSchemaErr  error
-)
-
-// EnsureSEPricesSchema creates the se-prices tables on first use. Idempotent.
+// EnsureSEPricesSchema creates the se-prices tables on first use. All
+// statements are CREATE ... IF NOT EXISTS, so this is idempotent and safe
+// to call repeatedly. The previous implementation cached the result in a
+// package-level sync.Once, but that permanently poisoned every caller in
+// the process if a transient error fired during early init (e.g., during
+// a parallel test run before OpenWithContext finished migrating). Re-running
+// the CREATE statements on every call costs microseconds against an open
+// SQLite handle and lets transient failures self-heal on the next call.
 func (s *Store) EnsureSEPricesSchema(ctx context.Context) error {
-	seSchemaOnce.Do(func() {
-		stmts := []string{
-			`CREATE TABLE IF NOT EXISTS sep_products (
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS sep_products (
 				source TEXT NOT NULL,
 				source_id TEXT NOT NULL,
 				name TEXT NOT NULL,
@@ -83,14 +83,14 @@ func (s *Store) EnsureSEPricesSchema(ctx context.Context) error {
 				last_seen_at DATETIME,
 				PRIMARY KEY (source, source_id)
 			)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_products_ean ON sep_products(ean)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_products_brand ON sep_products(brand)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_products_category ON sep_products(category)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_products_name ON sep_products(name)`,
-			`CREATE VIRTUAL TABLE IF NOT EXISTS sep_products_fts USING fts5(
+		`CREATE INDEX IF NOT EXISTS idx_sep_products_ean ON sep_products(ean)`,
+		`CREATE INDEX IF NOT EXISTS idx_sep_products_brand ON sep_products(brand)`,
+		`CREATE INDEX IF NOT EXISTS idx_sep_products_category ON sep_products(category)`,
+		`CREATE INDEX IF NOT EXISTS idx_sep_products_name ON sep_products(name)`,
+		`CREATE VIRTUAL TABLE IF NOT EXISTS sep_products_fts USING fts5(
 				source UNINDEXED, source_id UNINDEXED, name, brand, category, tokenize='porter unicode61'
 			)`,
-			`CREATE TABLE IF NOT EXISTS sep_offers (
+		`CREATE TABLE IF NOT EXISTS sep_offers (
 				source TEXT NOT NULL,
 				source_id TEXT NOT NULL,
 				merchant_id TEXT,
@@ -103,9 +103,9 @@ func (s *Store) EnsureSEPricesSchema(ctx context.Context) error {
 				fetched_at DATETIME,
 				PRIMARY KEY (source, source_id, merchant_id)
 			)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_offers_product ON sep_offers(source, source_id)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_offers_price ON sep_offers(total_sek)`,
-			`CREATE TABLE IF NOT EXISTS sep_price_snapshots (
+		`CREATE INDEX IF NOT EXISTS idx_sep_offers_product ON sep_offers(source, source_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_sep_offers_price ON sep_offers(total_sek)`,
+		`CREATE TABLE IF NOT EXISTS sep_price_snapshots (
 				source TEXT NOT NULL,
 				source_id TEXT NOT NULL,
 				taken_at DATETIME NOT NULL,
@@ -113,9 +113,9 @@ func (s *Store) EnsureSEPricesSchema(ctx context.Context) error {
 				offer_count INTEGER,
 				PRIMARY KEY (source, source_id, taken_at)
 			)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_snapshots_taken ON sep_price_snapshots(taken_at)`,
-			`CREATE INDEX IF NOT EXISTS idx_sep_snapshots_product ON sep_price_snapshots(source, source_id)`,
-			`CREATE TABLE IF NOT EXISTS sep_watchlist (
+		`CREATE INDEX IF NOT EXISTS idx_sep_snapshots_taken ON sep_price_snapshots(taken_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_sep_snapshots_product ON sep_price_snapshots(source, source_id)`,
+		`CREATE TABLE IF NOT EXISTS sep_watchlist (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				source TEXT,
 				source_id TEXT,
@@ -124,17 +124,15 @@ func (s *Store) EnsureSEPricesSchema(ctx context.Context) error {
 				max_price_sek REAL,
 				added_at DATETIME DEFAULT CURRENT_TIMESTAMP
 			)`,
+	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	for _, q := range stmts {
+		if _, err := s.db.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("se_prices migration %q: %w", firstLine(q), err)
 		}
-		s.writeMu.Lock()
-		defer s.writeMu.Unlock()
-		for _, q := range stmts {
-			if _, err := s.db.ExecContext(ctx, q); err != nil {
-				seSchemaErr = fmt.Errorf("se_prices migration %q: %w", firstLine(q), err)
-				return
-			}
-		}
-	})
-	return seSchemaErr
+	}
+	return nil
 }
 
 func firstLine(s string) string {
@@ -173,12 +171,21 @@ func (s *Store) UpsertSEProduct(ctx context.Context, p SEProduct) error {
 	); err != nil {
 		return fmt.Errorf("upserting product (%s, %s): %w", p.Source, p.SourceID, err)
 	}
+	// DELETE before INSERT keeps the FTS index aligned 1:1 with sep_products.
+	// Without this, every upsert appended a new FTS row, so after N syncs each
+	// product appeared N times in MATCH results — search hit counts inflated
+	// linearly with sync history. The FTS table is contentless-style here
+	// (no triggers wired against sep_products), so we own the cleanup.
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM sep_products_fts WHERE source=? AND source_id=?`,
+		p.Source, p.SourceID,
+	); err != nil {
+		return fmt.Errorf("clearing fts row for (%s, %s): %w", p.Source, p.SourceID, err)
+	}
 	if _, err := s.db.ExecContext(ctx, `
 		INSERT INTO sep_products_fts (source, source_id, name, brand, category) VALUES (?,?,?,?,?)`,
 		p.Source, p.SourceID, p.Name, p.Brand, p.Category,
 	); err != nil {
-		// FTS dupes are OK; ignore.
-		_ = err
+		return fmt.Errorf("indexing fts row for (%s, %s): %w", p.Source, p.SourceID, err)
 	}
 	return nil
 }
@@ -214,6 +221,21 @@ func (s *Store) UpsertSEProductBatch(ctx context.Context, products []SEProduct) 
 		return err
 	}
 	defer stmt.Close()
+	// FTS DELETE+INSERT per row, scoped by (source, source_id). Without this
+	// the batch path accumulated duplicate FTS rows on every sync, mirroring
+	// the bug fixed in UpsertSEProduct.
+	ftsDel, err := tx.PrepareContext(ctx, `DELETE FROM sep_products_fts WHERE source=? AND source_id=?`)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	defer ftsDel.Close()
+	ftsIns, err := tx.PrepareContext(ctx, `INSERT INTO sep_products_fts (source, source_id, name, brand, category) VALUES (?,?,?,?,?)`)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	defer ftsIns.Close()
 	now := time.Now().UTC().Format(time.RFC3339)
 	for _, p := range products {
 		if p.LastSeenAt == "" {
@@ -222,6 +244,14 @@ func (s *Store) UpsertSEProductBatch(ctx context.Context, products []SEProduct) 
 		if _, err := stmt.ExecContext(ctx, p.Source, p.SourceID, p.Name, p.Brand, p.Category, p.EAN, p.URL, p.ImageURL, p.LowestSEK, p.LastSeenAt); err != nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("upserting product batch (%s, %s): %w", p.Source, p.SourceID, err)
+		}
+		if _, err := ftsDel.ExecContext(ctx, p.Source, p.SourceID); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("clearing fts row (%s, %s): %w", p.Source, p.SourceID, err)
+		}
+		if _, err := ftsIns.ExecContext(ctx, p.Source, p.SourceID, p.Name, p.Brand, p.Category); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("indexing fts row (%s, %s): %w", p.Source, p.SourceID, err)
 		}
 	}
 	return tx.Commit()

@@ -95,7 +95,7 @@ These capabilities aren't available in any other tool for this API.
   _Pick this when a user names a product and asks for the best price right now; one call returns the unified answer instead of an agent juggling two calls._
 
   ```bash
-  se-prices-pp-cli lowest "iPhone 15 Pro Max" --in-stock --max-shipping 99 --agent
+  se-prices-pp-cli lowest "iPhone 15 Pro Max" --in-stock --agent
   ```
 - **`ean`** — Resolve an EAN to both Prisjakt and PriceRunner product IDs and return the union of current offers.
 
