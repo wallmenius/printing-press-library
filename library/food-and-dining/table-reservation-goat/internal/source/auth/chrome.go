@@ -9,12 +9,196 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/chrome"
+	chromebrowser "github.com/browserutils/kooky/browser/chrome"
 )
+
+// chromeRoots returns the per-platform candidate Chrome (and Chrome-derivative)
+// user-data directories. Used by the supplementary filesystem walk below to
+// supplement kooky's info_cache-driven discovery — kooky only iterates profiles
+// listed in <root>/Local State's profile.info_cache, so a profile dir present
+// on disk but missing from info_cache (corrupted, stale, fresh-install edge
+// cases) gets silently skipped along with its <profile>/Cookies file.
+func chromeRoots() []string {
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		return nil
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		return []string{
+			filepath.Join(cfgDir, "Google", "Chrome"),
+			filepath.Join(cfgDir, "Google", "Chrome Beta"),
+			filepath.Join(cfgDir, "Google", "Chrome Canary"),
+			filepath.Join(cfgDir, "Google", "Chrome Dev"),
+			filepath.Join(cfgDir, "Chromium"),
+			filepath.Join(cfgDir, "BraveSoftware", "Brave-Browser"),
+			filepath.Join(cfgDir, "Arc", "User Data"),
+		}
+	case "linux":
+		return []string{
+			filepath.Join(cfgDir, "google-chrome"),
+			filepath.Join(cfgDir, "google-chrome-beta"),
+			filepath.Join(cfgDir, "google-chrome-unstable"),
+			filepath.Join(cfgDir, "chromium"),
+			filepath.Join(cfgDir, "BraveSoftware", "Brave-Browser"),
+		}
+	default:
+		// Windows + others fall back to kooky's own discovery only;
+		// we don't have a reliable cross-version path map here.
+		return nil
+	}
+}
+
+// nonProfileDirs are subdirectories under a Chrome user-data root that are
+// not user profiles and never contain Cookies databases.
+var nonProfileDirs = map[string]bool{
+	"System Profile":                  true,
+	"Crashpad":                        true,
+	"GrShaderCache":                   true,
+	"GraphiteDawnCache":               true,
+	"ShaderCache":                     true,
+	"Subresource Filter":              true,
+	"OnDeviceHeadSuggestModel":        true,
+	"FirstPartySetsPreloaded":         true,
+	"hyphen-data":                     true,
+	"OptimizationHints":               true,
+	"OriginTrials":                    true,
+	"PnaclTranslationCache":           true,
+	"Safe Browsing":                   true,
+	"SSLErrorAssistant":               true,
+	"CertificateRevocation":           true,
+	"WidevineCdm":                     true,
+	"ZxcvbnData":                      true,
+	"AutofillStates":                  true,
+	"FileTypePolicies":                true,
+	"CertificateAuthorityNetworkPath": true,
+	"GCM Store":                       true,
+	"BrowserMetrics":                  true,
+	"CrashReports":                    true,
+	"Local Traces":                    true,
+	"PKIMetadata":                     true,
+	"hyphen-data-en":                  true,
+	"FirstPartySetsPreloaded.tmp":     true,
+	"DefaultRecord":                   true,
+	"AutofillRegexes":                 true,
+	"recovery_test":                   true,
+	"recovery":                        true,
+	"Last Browser":                    true,
+	"Last Version":                    true,
+	"Local State":                     true,
+}
+
+// chromeCookieCandidatePaths returns the absolute paths of every plausible
+// Chrome cookie database on this machine, walking the actual filesystem
+// rather than trusting <root>/Local State's profile.info_cache.
+func chromeCookieCandidatePaths() []string {
+	return chromeCookieCandidatePathsIn(chromeRoots())
+}
+
+// chromeCookieCandidatePathsIn is the testable variant of
+// chromeCookieCandidatePaths. For each profile-shaped subdirectory under
+// each given root, both Chrome 96+ (<profile>/Network/Cookies) and pre-96
+// (<profile>/Cookies) layouts are tried; non-existent paths are silently
+// skipped.
+func chromeCookieCandidatePathsIn(roots []string) []string {
+	var out []string
+	for _, root := range roots {
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if nonProfileDirs[name] {
+				continue
+			}
+			for _, sub := range []string{
+				filepath.Join(root, name, "Network", "Cookies"),
+				filepath.Join(root, name, "Cookies"),
+			} {
+				if info, err := os.Stat(sub); err == nil && !info.IsDir() {
+					out = append(out, sub)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// supplementaryChromeCookies reads cookies matching domainSuffix directly
+// from every Chrome cookie file found by chromeCookieCandidatePaths().
+// This supplements kooky's info_cache-driven discovery, which silently skips
+// profile directories not listed in <root>/Local State's profile.info_cache.
+// Per-file errors are returned as notes (non-fatal); reads from missing
+// keychain entries or corrupt files yield zero cookies for that file but
+// don't abort the rest of the walk.
+func supplementaryChromeCookies(ctx context.Context, domainSuffix string) ([]*kooky.Cookie, []string) {
+	paths := chromeCookieCandidatePaths()
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	var (
+		cookies []*kooky.Cookie
+		notes   []string
+	)
+	for _, path := range paths {
+		got, err := chromebrowser.ReadCookies(ctx, path, kooky.DomainHasSuffix(domainSuffix))
+		if err != nil {
+			// Truncate the error so a per-file note doesn't dominate the
+			// output. Most failures here are "no such file" (race against
+			// Chrome rotating Network/Cookies) or "decryption failed"
+			// (keychain access denied for an old profile).
+			notes = append(notes, fmt.Sprintf("%s: %s", filepath.Base(filepath.Dir(path))+"/"+filepath.Base(path), shortErr(err)))
+			continue
+		}
+		cookies = append(cookies, got...)
+	}
+	return cookies, notes
+}
+
+// dedupeCookies removes duplicate (Domain, Name, Path) entries across all
+// input slices. When the same key appears multiple times, the LAST one wins
+// — both kooky's auto-discovery and our supplementary walk return cookies
+// in disk-order, so the latest-written entry is the freshest. Entries with
+// later Expires are preferred; on ties, the later-encountered one wins.
+func dedupeCookies(slices ...[]*kooky.Cookie) []*kooky.Cookie {
+	type key struct {
+		domain string
+		name   string
+		path   string
+	}
+	seen := make(map[key]*kooky.Cookie)
+	for _, slc := range slices {
+		for _, c := range slc {
+			if c == nil {
+				continue
+			}
+			k := key{c.Domain, c.Name, c.Path}
+			if existing, ok := seen[k]; ok {
+				// Prefer the entry with the later Expires; breaks tie in
+				// favor of later-encountered (assumed freshest snapshot).
+				if !existing.Expires.IsZero() && !c.Expires.IsZero() && existing.Expires.After(c.Expires) {
+					continue
+				}
+			}
+			seen[k] = c
+		}
+	}
+	out := make([]*kooky.Cookie, 0, len(seen))
+	for _, c := range seen {
+		out = append(out, c)
+	}
+	return out
+}
 
 // shortErr trims a kooky multi-error to its first line to keep notes scannable.
 func shortErr(err error) string {
@@ -51,6 +235,18 @@ func ImportFromChrome(ctx context.Context) (otCookies, tockCookies []Cookie, res
 	// the error text as a note.
 	otRaw, otErr := kooky.ReadCookies(ctx, kooky.DomainHasSuffix("opentable.com"))
 	tockRaw, tockErr := kooky.ReadCookies(ctx, kooky.DomainHasSuffix("exploretock.com"))
+	// Supplement kooky's info_cache-driven discovery with a direct filesystem
+	// walk: kooky silently skips profile directories that aren't listed in
+	// <root>/Local State's profile.info_cache, even when their <profile>/Cookies
+	// file is present and readable. Symptom: doctor and `auth login --chrome`
+	// report 0 cookies (or incomplete cookies) on machines whose info_cache is
+	// missing entries that exist on disk — recovery the user reported is to
+	// symlink <profile>/Network/Cookies -> ../Cookies, but a direct walk is
+	// the right fix.
+	otSupp, otSuppNotes := supplementaryChromeCookies(ctx, "opentable.com")
+	tockSupp, tockSuppNotes := supplementaryChromeCookies(ctx, "exploretock.com")
+	otRaw = dedupeCookies(otRaw, otSupp)
+	tockRaw = dedupeCookies(tockRaw, tockSupp)
 	if otErr != nil && len(otRaw) == 0 && tockErr != nil && len(tockRaw) == 0 {
 		return nil, nil, result, fmt.Errorf("reading chrome cookies (ot=%v, tock=%v); is Chrome installed and have you signed in to opentable.com / exploretock.com?", otErr, tockErr)
 	}
@@ -63,6 +259,15 @@ func ImportFromChrome(ctx context.Context) (otCookies, tockCookies []Cookie, res
 		result.Notes = append(result.Notes, fmt.Sprintf("Tock: read %d cookies; some stores failed (non-fatal): %s", len(tockRaw), shortErr(tockErr)))
 	} else if tockErr != nil {
 		result.Notes = append(result.Notes, "Tock cookie read failed: "+shortErr(tockErr))
+	}
+	// Surface any supplementary-walk per-file failures only when they didn't
+	// also yield useful cookies; full failures are noteworthy, partial successes
+	// are signal-noise.
+	if len(otSupp) == 0 && len(otSuppNotes) > 0 {
+		result.Notes = append(result.Notes, "OpenTable supplementary walk: "+strings.Join(otSuppNotes, "; "))
+	}
+	if len(tockSupp) == 0 && len(tockSuppNotes) > 0 {
+		result.Notes = append(result.Notes, "Tock supplementary walk: "+strings.Join(tockSuppNotes, "; "))
 	}
 	now := time.Now()
 	convert := func(in kooky.Cookies, network string) []Cookie {
@@ -254,6 +459,11 @@ func RefreshAkamaiCookies(ctx context.Context, domainSuffix string) []Cookie {
 	ch := make(chan []Cookie, 1)
 	go func() {
 		raw, _ := kooky.ReadCookies(rctx, kooky.DomainHasSuffix(domainSuffix))
+		// Same supplementary walk as ImportFromChrome — kooky's info_cache
+		// driven discovery silently skips profile directories whose Local
+		// State entry is missing or stale.
+		supp, _ := supplementaryChromeCookies(rctx, domainSuffix)
+		raw = dedupeCookies(raw, supp)
 		out := make([]Cookie, 0, len(raw))
 		now := time.Now()
 		for _, c := range raw {
