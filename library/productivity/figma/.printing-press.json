@@ -5,7 +5,7 @@
   "api_name": "figma",
   "display_name": "Figma",
   "cli_name": "figma-pp-cli",
-  "owner": "giacaglia",
+  "owner": "giuliano-giacaglia",
   "printer": "giacaglia",
   "printer_name": "Giuliano Giacaglia",
   "spec_format": "openapi3",
@@ -62,5 +62,6 @@
       "description": "Flat list of every node and component that references a given variable across a file."
     }
   ],
-  "category": "productivity"
+  "category": "productivity",
+  "owner_name": "Giuliano Giacaglia"
 }
