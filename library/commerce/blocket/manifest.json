@@ -1,0 +1,27 @@
+{
+  "manifest_version": "0.3",
+  "name": "blocket-pp-mcp",
+  "display_name": "Blocket",
+  "version": "4.2.2",
+  "description": "Search Blocket and its mobility verticals from the terminal, with a local store, price history, and arbitrage detection.",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/blocket-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/blocket-pp-mcp",
+      "args": []
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}

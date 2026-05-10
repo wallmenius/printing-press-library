@@ -1,0 +1,369 @@
+{
+  "api_name": "blocket",
+  "novelty_score": 9,
+  "alternatives": [
+    {
+      "name": "dunderrrrrr/blocket_api",
+      "url": "https://github.com/dunderrrrrr/blocket_api",
+      "language": "Python",
+      "install_method": "",
+      "stars": 32,
+      "last_updated": "",
+      "command_count": 5,
+      "has_json_output": false,
+      "has_auth_support": false
+    },
+    {
+      "name": "siavashg/blocket-api",
+      "url": "https://github.com/siavashg/blocket-api",
+      "language": "Python",
+      "install_method": "",
+      "stars": 19,
+      "last_updated": "",
+      "command_count": 1,
+      "has_json_output": false,
+      "has_auth_support": false
+    },
+    {
+      "name": "bjesus/begagnad-mcp",
+      "url": "https://github.com/bjesus/begagnad-mcp",
+      "language": "TypeScript",
+      "install_method": "",
+      "stars": 4,
+      "last_updated": "",
+      "command_count": 2,
+      "has_json_output": false,
+      "has_auth_support": false
+    },
+    {
+      "name": "WilhelmvonArndt/scraper-blocket",
+      "url": "https://github.com/WilhelmvonArndt/scraper-blocket",
+      "language": "Python",
+      "install_method": "",
+      "stars": 0,
+      "last_updated": "",
+      "command_count": 0,
+      "has_json_output": false,
+      "has_auth_support": false
+    },
+    {
+      "name": "henrik/blocket_se_feeds",
+      "url": "https://github.com/henrik/blocket_se_feeds",
+      "language": "Ruby",
+      "install_method": "",
+      "stars": 0,
+      "last_updated": "",
+      "command_count": 0,
+      "has_json_output": false,
+      "has_auth_support": false
+    },
+    {
+      "name": "martinlarsalbert/blocket",
+      "url": "https://github.com/martinlarsalbert/blocket",
+      "language": "Python",
+      "install_method": "",
+      "stars": 0,
+      "last_updated": "",
+      "command_count": 0,
+      "has_json_output": false,
+      "has_auth_support": false
+    },
+    {
+      "name": "vonj/simplescraper",
+      "url": "https://github.com/vonj/simplescraper",
+      "language": "Python",
+      "install_method": "",
+      "stars": 0,
+      "last_updated": "",
+      "command_count": 0,
+      "has_json_output": false,
+      "has_auth_support": false
+    },
+    {
+      "name": "dan0/Blocket.se",
+      "url": "https://github.com/dan0/Blocket.se",
+      "language": "JavaScript",
+      "install_method": "",
+      "stars": 0,
+      "last_updated": "",
+      "command_count": 0,
+      "has_json_output": false,
+      "has_auth_support": false
+    }
+  ],
+  "gaps": [],
+  "patterns": [],
+  "recommendation": "proceed",
+  "researched_at": "2026-05-10T17:55:00Z",
+  "novel_features": [
+    {
+      "name": "What's new since timestamp",
+      "command": "since",
+      "description": "List ads added since a timestamp for any stored named-search, with cron-friendly exit codes when matches are found.",
+      "rationale": "Pure local SQLite query over synced `ads.timestamp` — Blocket's public search API has no `since` parameter and no delta endpoint.",
+      "example": "blocket-pp-cli since --search xc70 --since 2026-05-09 --json",
+      "why_it_matters": "Use this when you need to know what is genuinely new versus what the user already saw, without rerunning a paginated search.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Arbitrage / underpriced detector",
+      "command": "arbitrage",
+      "description": "Find current listings priced below threshold × median for their (make, model, year-band, mileage-band) cohort.",
+      "rationale": "Median computation requires aggregation across the synced corpus; the live API never returns price distributions.",
+      "example": "blocket-pp-cli arbitrage --vertical car --make Volvo --threshold 0.8 --json",
+      "why_it_matters": "Use this to surface deals an agent could not detect from a single search — the comparison set lives only in the local store.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Price history per ad",
+      "command": "price-history",
+      "description": "Show every snapshotted price for an ad over time with deltas; sync populates `ad_price_snapshots` on each run.",
+      "rationale": "The Blocket ad-detail endpoint returns only the current price; without local snapshots there is no history.",
+      "example": "blocket-pp-cli price-history 22587669 --json",
+      "why_it_matters": "Use this to confirm a price is genuinely lower than recent asking prices, not just lower than the user remembered.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Dealer portfolio with stats",
+      "command": "dealer ads",
+      "description": "Aggregate every current ad for an `org_id` plus inventory count, median price, oldest-listing-days, and percent price-dropped-this-week.",
+      "rationale": "Per-dealer aggregates require joining `ads` and `ad_price_snapshots` locally; no wrapper exposes these stats.",
+      "example": "blocket-pp-cli dealer ads 1234567 --stats --json",
+      "why_it_matters": "Use this to characterise a dealer's portfolio and turnover before contacting them, instead of scrolling their profile.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Stale listings detection",
+      "command": "stale",
+      "description": "Listings older than N days that are still active in the most recent sync, optionally filtered by vertical or dealer.",
+      "rationale": "Blocket has no \"days on market\" field; the answer is computed from `ads.timestamp` versus current time joined with last-sync presence.",
+      "example": "blocket-pp-cli stale --vertical car --older-than 60d --json",
+      "why_it_matters": "Use this to find listings ripe for negotiation or to rule out stale corpora when comparing prices.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Cross-vertical search",
+      "command": "search-all",
+      "description": "Free-text search that fans across BAP, used cars, boats, motorcycles, and the ten niche mobility verticals locally and merges results.",
+      "rationale": "Every existing wrapper is per-vertical; cross-vertical FTS requires a UNION over the typed local tables.",
+      "example": "blocket-pp-cli search-all \"Volvo\" --max-price 50000 --json",
+      "why_it_matters": "Use this when an item could live in any vertical (e.g., a Volvo could be a car, a part in BAP, or a model in MC).",
+      "group": "Cross-vertical leverage"
+    },
+    {
+      "name": "Watch with price-drop notification",
+      "command": "watch run",
+      "description": "Run a stored named-search and exit non-zero with structured JSON when ads in the result set dropped in price since the previous run.",
+      "rationale": "Diffing snapshots between runs is a local-store operation; the Blocket API will not tell you that a specific ad got cheaper.",
+      "example": "blocket-pp-cli watch run xc70 --notify-on price-drop --json",
+      "why_it_matters": "Use this in cron jobs or agent scheduled tasks to react only to genuine price drops, not every refresh.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Description regex",
+      "command": "desc-grep",
+      "description": "Match a Go regular expression against ad description text backfilled by ad-detail sync.",
+      "rationale": "Blocket's search API matches `q` against headings and a few high-gravity fields, not the long description; description text only enters the corpus via ad-detail backfill.",
+      "example": "blocket-pp-cli desc-grep --vertical car --pattern \"\\\\bnyservad\\\\b|\\\\brökfri\\\\b\" --json",
+      "why_it_matters": "Use this when the deal-defining keyword (\"rökfri\", \"nyservad\", \"original\") only appears in the description body, not the title.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Geo radius search",
+      "command": "geo near",
+      "description": "Filter synced ads by point + radius using haversine distance against `coordinates`.",
+      "rationale": "Blocket's public search filters by Swedish region IDs (län), not arbitrary latitude/longitude; the per-ad coordinates only become useful in the local store.",
+      "example": "blocket-pp-cli geo near --lat 59.33 --lon 18.06 --radius 30 --vertical car --json",
+      "why_it_matters": "Use this when the user defines proximity as \"within 30 km of my postcode\", not as a Swedish administrative region.",
+      "group": "Cross-vertical leverage"
+    },
+    {
+      "name": "Vehicle appraisal",
+      "command": "appraise",
+      "description": "Given a make/model/year/mileage, compute p10/p50/p90 of asking prices from the synced corpus and render the distribution.",
+      "rationale": "Percentile aggregates across a comparable set live only in the local store; no API endpoint returns a market-wide price distribution.",
+      "example": "blocket-pp-cli appraise --vertical car --make Volvo --model XC70 --year 2014 --mileage 18000 --json",
+      "why_it_matters": "Use this to price a hypothetical vehicle (yours or one you are about to bid on) against the current market without scraping listings by hand.",
+      "group": "Local state that compounds"
+    }
+  ],
+  "novel_features_built": [
+    {
+      "name": "What's new since timestamp",
+      "command": "since",
+      "description": "List ads added since a timestamp for any stored named-search, with cron-friendly exit codes when matches are found.",
+      "rationale": "Pure local SQLite query over synced `ads.timestamp` — Blocket's public search API has no `since` parameter and no delta endpoint.",
+      "example": "blocket-pp-cli since --search xc70 --since 2026-05-09 --json",
+      "why_it_matters": "Use this when you need to know what is genuinely new versus what the user already saw, without rerunning a paginated search.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Arbitrage / underpriced detector",
+      "command": "arbitrage",
+      "description": "Find current listings priced below threshold × median for their (make, model, year-band, mileage-band) cohort.",
+      "rationale": "Median computation requires aggregation across the synced corpus; the live API never returns price distributions.",
+      "example": "blocket-pp-cli arbitrage --vertical car --make Volvo --threshold 0.8 --json",
+      "why_it_matters": "Use this to surface deals an agent could not detect from a single search — the comparison set lives only in the local store.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Price history per ad",
+      "command": "price-history",
+      "description": "Show every snapshotted price for an ad over time with deltas; sync populates `ad_price_snapshots` on each run.",
+      "rationale": "The Blocket ad-detail endpoint returns only the current price; without local snapshots there is no history.",
+      "example": "blocket-pp-cli price-history 22587669 --json",
+      "why_it_matters": "Use this to confirm a price is genuinely lower than recent asking prices, not just lower than the user remembered.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Dealer portfolio with stats",
+      "command": "dealer ads",
+      "description": "Aggregate every current ad for an `org_id` plus inventory count, median price, oldest-listing-days, and percent price-dropped-this-week.",
+      "rationale": "Per-dealer aggregates require joining `ads` and `ad_price_snapshots` locally; no wrapper exposes these stats.",
+      "example": "blocket-pp-cli dealer ads 1234567 --stats --json",
+      "why_it_matters": "Use this to characterise a dealer's portfolio and turnover before contacting them, instead of scrolling their profile.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Stale listings detection",
+      "command": "stale",
+      "description": "Listings older than N days that are still active in the most recent sync, optionally filtered by vertical or dealer.",
+      "rationale": "Blocket has no \"days on market\" field; the answer is computed from `ads.timestamp` versus current time joined with last-sync presence.",
+      "example": "blocket-pp-cli stale --vertical car --older-than 60d --json",
+      "why_it_matters": "Use this to find listings ripe for negotiation or to rule out stale corpora when comparing prices.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Cross-vertical search",
+      "command": "search-all",
+      "description": "Free-text search that fans across BAP, used cars, boats, motorcycles, and the ten niche mobility verticals locally and merges results.",
+      "rationale": "Every existing wrapper is per-vertical; cross-vertical FTS requires a UNION over the typed local tables.",
+      "example": "blocket-pp-cli search-all \"Volvo\" --max-price 50000 --json",
+      "why_it_matters": "Use this when an item could live in any vertical (e.g., a Volvo could be a car, a part in BAP, or a model in MC).",
+      "group": "Cross-vertical leverage"
+    },
+    {
+      "name": "Watch with price-drop notification",
+      "command": "watch run",
+      "description": "Run a stored named-search and exit non-zero with structured JSON when ads in the result set dropped in price since the previous run.",
+      "rationale": "Diffing snapshots between runs is a local-store operation; the Blocket API will not tell you that a specific ad got cheaper.",
+      "example": "blocket-pp-cli watch run xc70 --notify-on price-drop --json",
+      "why_it_matters": "Use this in cron jobs or agent scheduled tasks to react only to genuine price drops, not every refresh.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Description regex",
+      "command": "desc-grep",
+      "description": "Match a Go regular expression against ad description text backfilled by ad-detail sync.",
+      "rationale": "Blocket's search API matches `q` against headings and a few high-gravity fields, not the long description; description text only enters the corpus via ad-detail backfill.",
+      "example": "blocket-pp-cli desc-grep --vertical car --pattern \"\\\\bnyservad\\\\b|\\\\brökfri\\\\b\" --json",
+      "why_it_matters": "Use this when the deal-defining keyword (\"rökfri\", \"nyservad\", \"original\") only appears in the description body, not the title.",
+      "group": "Local state that compounds"
+    },
+    {
+      "name": "Geo radius search",
+      "command": "geo near",
+      "description": "Filter synced ads by point + radius using haversine distance against `coordinates`.",
+      "rationale": "Blocket's public search filters by Swedish region IDs (län), not arbitrary latitude/longitude; the per-ad coordinates only become useful in the local store.",
+      "example": "blocket-pp-cli geo near --lat 59.33 --lon 18.06 --radius 30 --vertical car --json",
+      "why_it_matters": "Use this when the user defines proximity as \"within 30 km of my postcode\", not as a Swedish administrative region.",
+      "group": "Cross-vertical leverage"
+    },
+    {
+      "name": "Vehicle appraisal",
+      "command": "appraise",
+      "description": "Given a make/model/year/mileage, compute p10/p50/p90 of asking prices from the synced corpus and render the distribution.",
+      "rationale": "Percentile aggregates across a comparable set live only in the local store; no API endpoint returns a market-wide price distribution.",
+      "example": "blocket-pp-cli appraise --vertical car --make Volvo --model XC70 --year 2014 --mileage 18000 --json",
+      "why_it_matters": "Use this to price a hypothetical vehicle (yours or one you are about to bid on) against the current market without scraping listings by hand.",
+      "group": "Local state that compounds"
+    }
+  ],
+  "narrative": {
+    "display_name": "Blocket",
+    "headline": "Every Blocket vertical, every filter, plus the local store, price history, arbitrage detection, and cross-vertical search no other Blocket tool offers.",
+    "value_prop": "Blocket-pp-cli matches every existing wrapper's surface across the BAP and mobility verticals — including the ten niche ones (truck, bus, agriculture, caravan, ATV, scooter, mobile-home, a-tractor, agriculture-tractor, agriculture-tool) that no wrapper covers — and adds a SQLite-backed local store that unlocks workflows the live API cannot answer: what's new since yesterday, which listings are underpriced relative to their cohort, what a dealer's portfolio looks like, and how a vehicle's price compares to the rolling p10/p50/p90 distribution. Every command emits agent-native JSON with `--select` for nested fields and typed exit codes for cron and watcher pipelines.",
+    "auth_narrative": "No authentication required. Every command uses Blocket's public, unauthenticated endpoints. Saved searches (Bevakningar) are intentionally out of scope in v1 — the local `watch` command is the agent-native equivalent.",
+    "quickstart": [
+      {
+        "command": "blocket-pp-cli doctor",
+        "comment": "Confirm the binary is healthy and the public endpoints are reachable from your network."
+      },
+      {
+        "command": "blocket-pp-cli ads list --query \"airpods\" --json",
+        "comment": "Most recent BAP listings matching airpods, JSON shape ready to pipe."
+      },
+      {
+        "command": "blocket-pp-cli cars list --make Volvo --year-from 2010 --price-to 80000 --json",
+        "comment": "Used Volvos from 2010+ under 80,000 SEK — the canonical used-car query."
+      },
+      {
+        "command": "blocket-pp-cli mobility trucks --json",
+        "comment": "Sample one of the ten niche mobility verticals nobody else exposes."
+      },
+      {
+        "command": "blocket-pp-cli arbitrage --vertical car --make Volvo --model XC70 --threshold 0.8 --json",
+        "comment": "Surface XC70 listings priced ≤ 80% of the local-corpus median for their year+mileage band."
+      },
+      {
+        "command": "blocket-pp-cli appraise --vertical car --make Volvo --model XC70 --year 2014 --mileage 18000 --json",
+        "comment": "Price a specific vehicle against the corpus distribution."
+      }
+    ],
+    "troubleshoots": [
+      {
+        "symptom": "Search returns 0 results when you expect matches",
+        "fix": "Run `blocket-pp-cli filters list --vertical \u003cvertical\u003e` to see the valid filter values; Blocket validates make/model/category enums strictly."
+      },
+      {
+        "symptom": "`HTTP 429` from any command",
+        "fix": "Add `--page-delay 1s` to slow the request rate; the public endpoints are generous but a 429 means you have run too many parallel requests for too long."
+      },
+      {
+        "symptom": "`arbitrage` or `appraise` returns empty",
+        "fix": "Run `blocket-pp-cli sync` first — these commands aggregate over the local store and need at least a few hundred rows in the relevant vertical."
+      },
+      {
+        "symptom": "`bostad` (real estate) commands missing",
+        "fix": "Real estate is intentionally out of scope in v1; bostad.blocket.se rate-limits anonymous traffic aggressively. Use the website directly."
+      }
+    ],
+    "when_to_use": "Use blocket-pp-cli whenever an agent task involves Swedish second-hand listings: hunting deals across BAP and mobility verticals, comparison-shopping a vehicle, characterising a dealer's portfolio, watching for price drops on stored searches, or building a structured snapshot of a corner of the Swedish market for analysis. Prefer it over generic web fetching of blocket.se — every command emits structured JSON, exposes the full filter surface, and the local store keeps history that the live site discards.",
+    "recipes": [
+      {
+        "title": "Five fresh BAP listings as a JSON pipeline",
+        "command": "blocket-pp-cli ads list --query \"festool\" --json --select docs.heading,docs.price.amount,docs.location,docs.canonical_url",
+        "explanation": "Narrows a verbose search response down to the agent-relevant fields; canonical for shell pipelines."
+      },
+      {
+        "title": "Used-car ranking with jq",
+        "command": "blocket-pp-cli cars list --make Volvo --model XC70 --year-from 2012 --json --select docs.heading,docs.year,docs.mileage,docs.price.amount,docs.location | jq 'sort_by(.price.amount)[:10]'",
+        "explanation": "Pipes structured JSON into jq for ranking — every wrapper requires a custom parser to do this."
+      },
+      {
+        "title": "Daily delta on a saved search",
+        "command": "blocket-pp-cli since --search xc70 --since 24h --json",
+        "explanation": "Cron-friendly query for a 24-hour window; exits non-zero when there are matches so a wrapper script can react."
+      },
+      {
+        "title": "Price-drop watcher",
+        "command": "blocket-pp-cli watch run xc70 --notify-on price-drop --json",
+        "explanation": "Diffs current prices against the prior snapshot; pair with a cron job or systemd timer to get notified only when the corpus actually moved."
+      },
+      {
+        "title": "Description regex against the local store",
+        "command": "blocket-pp-cli desc-grep --vertical car --pattern \"\\\\bnyservad\\\\b\" --json --select ad_id,heading,price.amount,canonical_url",
+        "explanation": "Find listings whose description (not the title) mentions \"nyservad\" — the public search API will not match against descriptions."
+      }
+    ],
+    "trigger_phrases": [
+      "find a deal on Blocket",
+      "search Swedish classifieds",
+      "find a used car on Blocket",
+      "compare Blocket prices",
+      "watch Blocket for new listings",
+      "use blocket",
+      "run blocket"
+    ]
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-10T20:35:48.707854649Z",
+  "printing_press_version": "4.2.2",
+  "api_name": "blocket",
+  "display_name": "Blocket",
+  "cli_name": "blocket-pp-cli",
+  "owner": "johan-wallmn",
+  "printer": "wallmen",
+  "printer_name": "Johan Wallmén",
+  "spec_path": "/home/wallmen/printing-press/.runstate/cli-printing-press-8000c45d/runs/20260510-193933/research/blocket-spec.yaml",
+  "spec_format": "internal",
+  "spec_checksum": "sha256:cdb10582b6f93fa6038b6eab54f97b851437689102c26d77167629c6dfc34d7e",
+  "run_id": "20260510-193933",
+  "category": "commerce",
+  "description": "Search Blocket and its mobility verticals from the terminal, with a local store, price history, and arbitrage detection.",
+  "mcp_binary": "blocket-pp-mcp",
+  "mcp_tool_count": 17,
+  "mcp_public_tool_count": 17,
+  "mcp_ready": "full",
+  "api_version": "0.1.0",
+  "auth_type": "none",
+  "novel_features": [
+    {
+      "name": "What's new since timestamp",
+      "command": "since",
+      "description": "List ads added since a timestamp for any stored named-search, with cron-friendly exit codes when matches are found."
+    },
+    {
+      "name": "Arbitrage / underpriced detector",
+      "command": "arbitrage",
+      "description": "Find current listings priced below threshold × median for their (make, model, year-band, mileage-band) cohort."
+    },
+    {
+      "name": "Price history per ad",
+      "command": "price-history",
+      "description": "Show every snapshotted price for an ad over time with deltas; sync populates `ad_price_snapshots` on each run."
+    },
+    {
+      "name": "Dealer portfolio with stats",
+      "command": "dealer ads",
+      "description": "Aggregate every current ad for an `org_id` plus inventory count, median price, oldest-listing-days, and percent price-dropped-this-week."
+    },
+    {
+      "name": "Stale listings detection",
+      "command": "stale",
+      "description": "Listings older than N days that are still active in the most recent sync, optionally filtered by vertical or dealer."
+    },
+    {
+      "name": "Cross-vertical search",
+      "command": "search-all",
+      "description": "Free-text search that fans across BAP, used cars, boats, motorcycles, and the ten niche mobility verticals locally and merges results."
+    },
+    {
+      "name": "Watch with price-drop notification",
+      "command": "watch run",
+      "description": "Run a stored named-search and exit non-zero with structured JSON when ads in the result set dropped in price since the previous run."
+    },
+    {
+      "name": "Description regex",
+      "command": "desc-grep",
+      "description": "Match a Go regular expression against ad description text backfilled by ad-detail sync."
+    },
+    {
+      "name": "Geo radius search",
+      "command": "geo near",
+      "description": "Filter synced ads by point + radius using haversine distance against `coordinates`."
+    },
+    {
+      "name": "Vehicle appraisal",
+      "command": "appraise",
+      "description": "Given a make/model/year/mileage, compute p10/p50/p90 of asking prices from the synced corpus and render the distribution."
+    }
+  ]
+}

@@ -1,0 +1,879 @@
+{
+  "api_name": "blocket",
+  "base_url": "https://www.blocket.se",
+  "description": "Blocket — Sweden's largest second-hand marketplace (BAP general + mobility).",
+  "mcp_ready": "full",
+  "http_transport": "browser-chrome",
+  "auth": {
+    "type": "none"
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "ads_get",
+      "description": "Fetch full detail for a BAP listing. Required: ad_id. Returns the AdDetail.",
+      "method": "GET",
+      "path": "/recommerce/forsale/item/{ad_id}",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "ad_id",
+          "type": "string",
+          "location": "path",
+          "description": "Blocket ad id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ads_list",
+      "description": "List general BAP listings (SEARCH_ID_BAP_COMMON). Optional: query, category, location (plus 10 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/recommerce/forsale/search/api/search/SEARCH_ID_BAP_COMMON",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query against listing headings."
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "location": "query",
+          "description": "Hierarchical category id (e.g. 0.91, 1.91.3108, 2.91.3108.362)."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id; repeat by comma-separating values."
+        },
+        {
+          "name": "radius",
+          "type": "int",
+          "location": "query",
+          "description": "Radius in km when combined with a location seed."
+        },
+        {
+          "name": "trade_type",
+          "type": "string",
+          "location": "query",
+          "description": "Seller intent — Säljes (selling), Köpes (buying), Bortskänkes (giving away)."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price in SEK."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price in SEK."
+        },
+        {
+          "name": "dealer_segment",
+          "type": "string",
+          "location": "query",
+          "description": "Filter by dealer segment (private vs dealer)."
+        },
+        {
+          "name": "condition",
+          "type": "string",
+          "location": "query",
+          "description": "Listing condition — new, used, broken, etc."
+        },
+        {
+          "name": "shipping_types",
+          "type": "string",
+          "location": "query",
+          "description": "Filter by shipping option (e.g. with-shipping, pickup-only)."
+        },
+        {
+          "name": "published",
+          "type": "string",
+          "location": "query",
+          "description": "Recency filter (e.g. last_24h, last_week)."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "location": "query",
+          "description": "Sort order (default newest)."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number (1-based, 50 results per page)."
+        }
+      ]
+    },
+    {
+      "name": "boats_list",
+      "description": "List used-boat listings. Optional: query, type, location (plus 7 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_BOAT_USED",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "location": "query",
+          "description": "Boat type (Motorbåt, Segelbåt, Roddbåt, …)."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "length_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum length in feet."
+        },
+        {
+          "name": "length_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum length in feet."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price in SEK."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price in SEK."
+        },
+        {
+          "name": "org_id",
+          "type": "int",
+          "location": "query",
+          "description": "Restrict to dealer org_id."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "location": "query",
+          "description": "Sort order."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number (1-based)."
+        }
+      ]
+    },
+    {
+      "name": "cars_get",
+      "description": "Fetch full detail for a vehicle listing. Required: ad_id. Returns the AdDetail.",
+      "method": "GET",
+      "path": "/mobility/item/{ad_id}",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "ad_id",
+          "type": "string",
+          "location": "path",
+          "description": "Blocket ad id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "cars_list",
+      "description": "List used-car listings. Optional: query, make, model (plus 22 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_CAR_USED",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "make",
+          "type": "string",
+          "location": "query",
+          "description": "Vehicle make (Volvo, Saab, BMW, …); repeat for OR."
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "location": "query",
+          "description": "Vehicle model (XC70, V70, …); repeat for OR."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "radius",
+          "type": "int",
+          "location": "query",
+          "description": "Radius in km when combined with a location seed."
+        },
+        {
+          "name": "fuel",
+          "type": "string",
+          "location": "query",
+          "description": "Fuel type (Bensin, Diesel, El, Hybrid, …)."
+        },
+        {
+          "name": "body_type",
+          "type": "string",
+          "location": "query",
+          "description": "Body type (Kombi, Sedan, SUV, …)."
+        },
+        {
+          "name": "sales_form",
+          "type": "string",
+          "location": "query",
+          "description": "Sales form (Säljes, Bytes, Hyrköp, …)."
+        },
+        {
+          "name": "dealer_segment",
+          "type": "string",
+          "location": "query",
+          "description": "Private vs dealer."
+        },
+        {
+          "name": "transmission",
+          "type": "string",
+          "location": "query",
+          "description": "Manuell or Automat."
+        },
+        {
+          "name": "wheel_drive",
+          "type": "string",
+          "location": "query",
+          "description": "Drivetrain (FWD, RWD, AWD, 4WD)."
+        },
+        {
+          "name": "exterior_colour",
+          "type": "string",
+          "location": "query",
+          "description": "Exterior colour."
+        },
+        {
+          "name": "vat_deductible",
+          "type": "bool",
+          "location": "query",
+          "description": "Filter for VAT-deductible listings only."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price in SEK."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price in SEK."
+        },
+        {
+          "name": "year_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum model year."
+        },
+        {
+          "name": "year_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum model year."
+        },
+        {
+          "name": "mileage_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum mileage in mil (Swedish miles, 1 mil = 10 km)."
+        },
+        {
+          "name": "mileage_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum mileage in mil."
+        },
+        {
+          "name": "engine_effect",
+          "type": "string",
+          "location": "query",
+          "description": "Engine power (horsepower band)."
+        },
+        {
+          "name": "car_equipment",
+          "type": "string",
+          "location": "query",
+          "description": "Equipment filter (e.g. parkeringssensor, dragkrok)."
+        },
+        {
+          "name": "org_id",
+          "type": "int",
+          "location": "query",
+          "description": "Restrict to a specific dealer org_id."
+        },
+        {
+          "name": "published",
+          "type": "string",
+          "location": "query",
+          "description": "Recency filter."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "location": "query",
+          "description": "Sort order."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number (1-based)."
+        }
+      ]
+    },
+    {
+      "name": "mobility_atractors",
+      "description": "A-tractors / EPA-traktors (SEARCH_ID_CAR_A_TRACTOR). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_CAR_A_TRACTOR",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_atvs",
+      "description": "ATVs / fyrhjulingar (SEARCH_ID_MC_ATV). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_MC_ATV",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_buses",
+      "description": "Buses (SEARCH_ID_CAR_BUS). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_CAR_BUS",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_caravans",
+      "description": "Caravans (SEARCH_ID_CAR_CARAVAN). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_CAR_CARAVAN",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_combines",
+      "description": "Agriculture combines / threshing machines (SEARCH_ID_AGRICULTURE_THRESHING). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_AGRICULTURE_THRESHING",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_construction",
+      "description": "Construction equipment (SEARCH_ID_CAR_AGRI). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_CAR_AGRI",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_mobilehomes",
+      "description": "Mobile homes (SEARCH_ID_CAR_MOBILE_HOME). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_CAR_MOBILE_HOME",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_scooters",
+      "description": "Scooters (SEARCH_ID_MC_SCOOTER). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_MC_SCOOTER",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_tools",
+      "description": "Agriculture tools (SEARCH_ID_AGRICULTURE_TOOL). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_AGRICULTURE_TOOL",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_tractors",
+      "description": "Agriculture tractors (SEARCH_ID_AGRICULTURE_TRACTOR). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_AGRICULTURE_TRACTOR",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "mobility_trucks",
+      "description": "Heavy trucks (SEARCH_ID_CAR_TRUCK). Optional: query, location, price_from (plus 2 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_CAR_TRUCK",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number."
+        }
+      ]
+    },
+    {
+      "name": "motorcycles_list",
+      "description": "List used-motorcycle listings. Optional: query, type, model (plus 8 more). Returns the SearchResponse.",
+      "method": "GET",
+      "path": "/mobility/search/api/search/SEARCH_ID_MC_USED",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "query",
+          "wire_name": "q",
+          "type": "string",
+          "location": "query",
+          "description": "Free-text query."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "location": "query",
+          "description": "Motorcycle type (Sport, Touring, Cruiser, Enduro, …)."
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "location": "query",
+          "description": "Specific model."
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "location": "query",
+          "description": "Swedish region/county id."
+        },
+        {
+          "name": "price_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum price in SEK."
+        },
+        {
+          "name": "price_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum price in SEK."
+        },
+        {
+          "name": "engine_volume_from",
+          "type": "int",
+          "location": "query",
+          "description": "Minimum engine volume in cc."
+        },
+        {
+          "name": "engine_volume_to",
+          "type": "int",
+          "location": "query",
+          "description": "Maximum engine volume in cc."
+        },
+        {
+          "name": "org_id",
+          "type": "int",
+          "location": "query",
+          "description": "Restrict to dealer org_id."
+        },
+        {
+          "name": "sort",
+          "type": "string",
+          "location": "query",
+          "description": "Sort order."
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "location": "query",
+          "description": "Page number (1-based)."
+        }
+      ]
+    }
+  ]
+}

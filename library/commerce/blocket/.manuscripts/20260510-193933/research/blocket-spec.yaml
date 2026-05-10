@@ -1,0 +1,483 @@
+name: blocket
+display_name: Blocket
+description: "Blocket — Sweden's largest second-hand marketplace (BAP general + mobility)."
+cli_description: "Search Blocket and its mobility verticals from the terminal, with a local store, price history, and arbitrage detection."
+version: "0.1.0"
+base_url: "https://www.blocket.se"
+website_url: "https://www.blocket.se"
+spec_source: sniffed
+category: commerce
+
+auth:
+  type: none
+
+config:
+  format: toml
+  path: "~/.config/blocket-pp-cli/config.toml"
+
+resources:
+  ads:
+    description: "Browse and fetch general BAP (Buying And Selling) listings — everything that is not a vehicle."
+    endpoints:
+      list:
+        method: GET
+        path: "/recommerce/forsale/search/api/search/SEARCH_ID_BAP_COMMON"
+        description: "List general BAP listings (SEARCH_ID_BAP_COMMON)."
+        no_auth: true
+        response_path: docs
+        params:
+          - name: q
+            flag_name: query
+            type: string
+            description: "Free-text query against listing headings."
+          - name: category
+            type: string
+            description: "Hierarchical category id (e.g. 0.91, 1.91.3108, 2.91.3108.362)."
+          - name: location
+            type: string
+            description: "Swedish region/county id; repeat by comma-separating values."
+          - name: radius
+            type: int
+            description: "Radius in km when combined with a location seed."
+          - name: trade_type
+            type: string
+            description: "Seller intent — Säljes (selling), Köpes (buying), Bortskänkes (giving away)."
+          - name: price_from
+            type: int
+            description: "Minimum price in SEK."
+          - name: price_to
+            type: int
+            description: "Maximum price in SEK."
+          - name: dealer_segment
+            type: string
+            description: "Filter by dealer segment (private vs dealer)."
+          - name: condition
+            type: string
+            description: "Listing condition — new, used, broken, etc."
+          - name: shipping_types
+            type: string
+            description: "Filter by shipping option (e.g. with-shipping, pickup-only)."
+          - name: published
+            type: string
+            description: "Recency filter (e.g. last_24h, last_week)."
+          - name: sort
+            type: string
+            description: "Sort order (default newest)."
+            default: PUBLISHED_DESC
+          - name: page
+            type: int
+            description: "Page number (1-based, 50 results per page)."
+            default: 1
+        response:
+          type: object
+          item: SearchResponse
+      get:
+        method: GET
+        path: "/recommerce/forsale/item/{ad_id}"
+        description: "Fetch full detail for a BAP listing."
+        no_auth: true
+        params:
+          - name: ad_id
+            type: string
+            required: true
+            positional: true
+            description: "Blocket ad id."
+        response:
+          type: object
+          item: AdDetail
+
+  cars:
+    description: "Search and fetch used-car listings (SEARCH_ID_CAR_USED)."
+    endpoints:
+      list:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_CAR_USED"
+        description: "List used-car listings."
+        no_auth: true
+        response_path: docs
+        params:
+          - name: q
+            flag_name: query
+            type: string
+            description: "Free-text query."
+          - name: make
+            type: string
+            description: "Vehicle make (Volvo, Saab, BMW, …); repeat for OR."
+          - name: model
+            type: string
+            description: "Vehicle model (XC70, V70, …); repeat for OR."
+          - name: location
+            type: string
+            description: "Swedish region/county id."
+          - name: radius
+            type: int
+            description: "Radius in km when combined with a location seed."
+          - name: fuel
+            type: string
+            description: "Fuel type (Bensin, Diesel, El, Hybrid, …)."
+          - name: body_type
+            type: string
+            description: "Body type (Kombi, Sedan, SUV, …)."
+          - name: sales_form
+            type: string
+            description: "Sales form (Säljes, Bytes, Hyrköp, …)."
+          - name: dealer_segment
+            type: string
+            description: "Private vs dealer."
+          - name: transmission
+            type: string
+            description: "Manuell or Automat."
+          - name: wheel_drive
+            type: string
+            description: "Drivetrain (FWD, RWD, AWD, 4WD)."
+          - name: exterior_colour
+            type: string
+            description: "Exterior colour."
+          - name: vat_deductible
+            type: bool
+            description: "Filter for VAT-deductible listings only."
+          - name: price_from
+            type: int
+            description: "Minimum price in SEK."
+          - name: price_to
+            type: int
+            description: "Maximum price in SEK."
+          - name: year_from
+            type: int
+            description: "Minimum model year."
+          - name: year_to
+            type: int
+            description: "Maximum model year."
+          - name: mileage_from
+            type: int
+            description: "Minimum mileage in mil (Swedish miles, 1 mil = 10 km)."
+          - name: mileage_to
+            type: int
+            description: "Maximum mileage in mil."
+          - name: engine_effect
+            type: string
+            description: "Engine power (horsepower band)."
+          - name: car_equipment
+            type: string
+            description: "Equipment filter (e.g. parkeringssensor, dragkrok)."
+          - name: org_id
+            type: int
+            description: "Restrict to a specific dealer org_id."
+          - name: published
+            type: string
+            description: "Recency filter."
+          - name: sort
+            type: string
+            description: "Sort order."
+            default: PUBLISHED_DESC
+          - name: page
+            type: int
+            description: "Page number (1-based)."
+            default: 1
+        response:
+          type: object
+          item: SearchResponse
+      get:
+        method: GET
+        path: "/mobility/item/{ad_id}"
+        description: "Fetch full detail for a vehicle listing."
+        no_auth: true
+        params:
+          - name: ad_id
+            type: string
+            required: true
+            positional: true
+            description: "Blocket ad id."
+        response:
+          type: object
+          item: AdDetail
+
+  boats:
+    description: "Search used-boat listings (SEARCH_ID_BOAT_USED)."
+    endpoints:
+      list:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_BOAT_USED"
+        description: "List used-boat listings."
+        no_auth: true
+        response_path: docs
+        params:
+          - name: q
+            flag_name: query
+            type: string
+            description: "Free-text query."
+          - name: type
+            type: string
+            description: "Boat type (Motorbåt, Segelbåt, Roddbåt, …)."
+          - name: location
+            type: string
+            description: "Swedish region/county id."
+          - name: length_from
+            type: int
+            description: "Minimum length in feet."
+          - name: length_to
+            type: int
+            description: "Maximum length in feet."
+          - name: price_from
+            type: int
+            description: "Minimum price in SEK."
+          - name: price_to
+            type: int
+            description: "Maximum price in SEK."
+          - name: org_id
+            type: int
+            description: "Restrict to dealer org_id."
+          - name: sort
+            type: string
+            description: "Sort order."
+            default: PUBLISHED_DESC
+          - name: page
+            type: int
+            description: "Page number (1-based)."
+            default: 1
+        response:
+          type: object
+          item: SearchResponse
+
+  motorcycles:
+    description: "Search used-motorcycle listings (SEARCH_ID_MC_USED)."
+    endpoints:
+      list:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_MC_USED"
+        description: "List used-motorcycle listings."
+        no_auth: true
+        response_path: docs
+        params:
+          - name: q
+            flag_name: query
+            type: string
+            description: "Free-text query."
+          - name: type
+            type: string
+            description: "Motorcycle type (Sport, Touring, Cruiser, Enduro, …)."
+          - name: model
+            type: string
+            description: "Specific model."
+          - name: location
+            type: string
+            description: "Swedish region/county id."
+          - name: price_from
+            type: int
+            description: "Minimum price in SEK."
+          - name: price_to
+            type: int
+            description: "Maximum price in SEK."
+          - name: engine_volume_from
+            type: int
+            description: "Minimum engine volume in cc."
+          - name: engine_volume_to
+            type: int
+            description: "Maximum engine volume in cc."
+          - name: org_id
+            type: int
+            description: "Restrict to dealer org_id."
+          - name: sort
+            type: string
+            description: "Sort order."
+            default: PUBLISHED_DESC
+          - name: page
+            type: int
+            description: "Page number (1-based)."
+            default: 1
+        response:
+          type: object
+          item: SearchResponse
+
+  mobility:
+    description: "Niche mobility verticals — trucks, buses, construction, agriculture, caravans, mobile homes, A-traktor, ATVs, scooters."
+    endpoints:
+      trucks:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_CAR_TRUCK"
+        description: "Heavy trucks (SEARCH_ID_CAR_TRUCK)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      buses:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_CAR_BUS"
+        description: "Buses (SEARCH_ID_CAR_BUS)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      construction:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_CAR_AGRI"
+        description: "Construction equipment (SEARCH_ID_CAR_AGRI)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      tractors:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_AGRICULTURE_TRACTOR"
+        description: "Agriculture tractors (SEARCH_ID_AGRICULTURE_TRACTOR)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      tools:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_AGRICULTURE_TOOL"
+        description: "Agriculture tools (SEARCH_ID_AGRICULTURE_TOOL)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      combines:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_AGRICULTURE_THRESHING"
+        description: "Agriculture combines / threshing machines (SEARCH_ID_AGRICULTURE_THRESHING)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      caravans:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_CAR_CARAVAN"
+        description: "Caravans (SEARCH_ID_CAR_CARAVAN)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      mobilehomes:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_CAR_MOBILE_HOME"
+        description: "Mobile homes (SEARCH_ID_CAR_MOBILE_HOME)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      atractors:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_CAR_A_TRACTOR"
+        description: "A-tractors / EPA-traktors (SEARCH_ID_CAR_A_TRACTOR)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      atvs:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_MC_ATV"
+        description: "ATVs / fyrhjulingar (SEARCH_ID_MC_ATV)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+      scooters:
+        method: GET
+        path: "/mobility/search/api/search/SEARCH_ID_MC_SCOOTER"
+        description: "Scooters (SEARCH_ID_MC_SCOOTER)."
+        no_auth: true
+        response_path: docs
+        params:
+          - {name: q, flag_name: query, type: string, description: "Free-text query."}
+          - {name: location, type: string, description: "Swedish region/county id."}
+          - {name: price_from, type: int, description: "Minimum price."}
+          - {name: price_to, type: int, description: "Maximum price."}
+          - {name: page, type: int, default: 1, description: "Page number."}
+        response: {type: object, item: SearchResponse}
+
+extra_commands:
+  - name: search-all
+    description: "Cross-vertical free-text search across BAP, cars, boats, MCs, and the niche mobility verticals from the local store."
+  - name: since
+    description: "List ads added since a timestamp for a stored named-search; cron-friendly typed exit codes."
+  - name: arbitrage
+    description: "Find current listings priced ≤ threshold × median for their (make, model, year-band, mileage-band) cohort."
+  - name: price-history
+    description: "Show all snapshotted prices for an ad over time with deltas, populated by sync re-fetching tracked ads."
+  - name: dealer
+    description: "Dealer portfolio commands — list ads, aggregate stats, and turnover analysis by org_id."
+  - name: stale
+    description: "Listings older than N days that are still active in the most recent sync."
+  - name: watch
+    description: "Stored named-searches with sync, run, and price-drop notification commands."
+  - name: desc-grep
+    description: "Match a Go regular expression against ad descriptions backfilled into the local store."
+  - name: geo
+    description: "Geo radius search — filter synced ads by point + radius using haversine distance."
+  - name: appraise
+    description: "Compute p10/p50/p90 of asking prices for a comparable vehicle set from the synced corpus."
+  - name: filters
+    description: "List valid filter values for a vertical by probing one search response — agents introspect the filter set."
+
+types:
+  SearchResponse:
+    fields:
+      - name: docs
+        type: array
+        description: "Listings matching the query."
+      - name: filters
+        type: array
+        description: "Filter tree describing the valid filter values for the result set."
+      - name: metadata
+        type: object
+        description: "Result metadata: paging, search_key, vertical, sort, descriptions, tracking."
+
+  AdDetail:
+    fields:
+      - name: itemData
+        type: object
+        description: "Full ad payload — title, location, description, images, seller, attributes."
+      - name: isPreview
+        type: bool
+        description: "True when the ad is a preview/draft, not a live listing."

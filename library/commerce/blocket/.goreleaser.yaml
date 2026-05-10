@@ -1,0 +1,51 @@
+version: 2
+project_name: blocket-pp-cli
+changelog:
+  disable: true
+builds:
+  - id: blocket-pp-cli
+    main: ./cmd/blocket-pp-cli
+    binary: blocket-pp-cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/mvanhorn/printing-press-library/library/commerce/blocket/internal/cli.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+  - id: blocket-pp-mcp
+    main: ./cmd/blocket-pp-mcp
+    binary: blocket-pp-mcp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: checksums.txt
+brews:
+  - name: blocket-pp-cli
+    repository:
+      owner: johan-wallmn
+      name: homebrew-tap
+    homepage: "https://github.com/mvanhorn/printing-press-library"
+    description: "Every Blocket vertical, every filter, plus the local store, price history, arbitrage detection, and cross-vertical..."
+    install: |
+      bin.install "blocket-pp-cli"
+      bin.install "blocket-pp-mcp"
