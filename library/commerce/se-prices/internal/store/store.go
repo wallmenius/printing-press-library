@@ -998,19 +998,51 @@ func (s *Store) GetSyncCursor(resourceType string) string {
 
 // ListIDs returns all IDs from a resource's domain table, or from the generic
 // resources table if no domain table exists. Used by dependent sync to iterate parents.
+//
+// resourceType is interpolated into the table-name position, which prepared
+// statements cannot parameterize. Defend in two layers: reject anything that
+// isn't a SQL identifier, then confirm the table actually exists in
+// sqlite_master before issuing the SELECT. Together these forbid SQL
+// metacharacters and unknown table names. Anything that fails either check
+// falls through to the parameterized generic-table path, which has always
+// been safe.
 func (s *Store) ListIDs(resourceType string) ([]string, error) {
-	// Try domain table first (tables are named after the resource type)
-	query := fmt.Sprintf("SELECT id FROM %s", resourceType)
-	rows, err := s.db.Query(query)
-	if err != nil {
-		// Fall back to generic resources table
-		rows, err = s.db.Query("SELECT id FROM resources WHERE resource_type = ?", resourceType)
-		if err != nil {
-			return nil, err
+	if isSafeSQLIdentifier(resourceType) && s.tableExists(resourceType) {
+		// resourceType is now known to be a real table whose name matches a
+		// strict identifier pattern, so quoted interpolation is safe.
+		rows, err := s.db.Query(fmt.Sprintf(`SELECT id FROM "%s"`, resourceType))
+		if err == nil {
+			defer rows.Close()
+			return scanIDColumn(rows)
 		}
 	}
+	// Fall back to the parameterized generic-table path.
+	rows, err := s.db.Query("SELECT id FROM resources WHERE resource_type = ?", resourceType)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
+	return scanIDColumn(rows)
+}
 
+var safeSQLIdentifierRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,63}$`)
+
+// isSafeSQLIdentifier reports whether s is a syntactically valid SQL
+// identifier safe to interpolate in a table-name position. Rejects any value
+// containing whitespace, quotes, semicolons, comment markers, or other SQL
+// metacharacters.
+func isSafeSQLIdentifier(s string) bool {
+	return safeSQLIdentifierRe.MatchString(s)
+}
+
+// tableExists returns true when name is a real table in sqlite_master.
+func (s *Store) tableExists(name string) bool {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = ?`, name).Scan(&n)
+	return err == nil && n > 0
+}
+
+func scanIDColumn(rows *sql.Rows) ([]string, error) {
 	var ids []string
 	for rows.Next() {
 		var id string
