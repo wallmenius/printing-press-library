@@ -16,6 +16,7 @@ package prisjakt
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -26,6 +27,18 @@ const (
 	// HostPrisjakt is the public web host used for all routes.
 	HostPrisjakt = "https://www.prisjakt.nu"
 )
+
+// PATCH: ErrSearchUnavailable lets cross-site callers distinguish "Prisjakt
+// search returned no parseable data" (the site moved to a Cloudflare-challenged
+// client-side-rendered /search that stdlib/Surf UAs can no longer read) from a
+// genuine zero-result search. Previously ParseSearch swallowed the parse error
+// and returned an empty listing with a nil error, so cross-site commands
+// (lowest, etc.) and the prisjakt_search command silently degraded to
+// PriceRunner-only while still presenting as cross-site.
+var ErrSearchUnavailable = errors.New(
+	"Prisjakt search is unavailable — the site moved to Cloudflare-challenged " +
+		"client-side rendering and no longer server-renders /search results; " +
+		"PriceRunner search still works")
 
 // reactQueryRe captures the body of `window.__REACT_QUERY_STATE__ = JSON.parse('...')`.
 var reactQueryRe = regexp.MustCompile(`(?s)window\.__REACT_QUERY_STATE__\s*=\s*JSON\.parse\('(.+?)'\)`)
@@ -634,12 +647,26 @@ type SearchListing struct {
 
 // ParseSearch extracts a typed SearchListing. Prisjakt's /search page rehydrates
 // productCollection-shaped data because search is implemented as a category-style
-// view, so the same parser handles both. NOTE: requires Surf transport because
-// /search is Cloudflare-challenged for stdlib UAs.
+// view, so the same parser handles both.
+//
+// PATCH: surface failures as a real error (wrapping ErrSearchUnavailable)
+// instead of swallowing them into an empty-but-successful listing. Prisjakt's
+// /search no longer server-renders the React Query state — it returns a
+// Cloudflare challenge / client-rendered shell with no __REACT_QUERY_STATE__,
+// so ParseCategory errors out. The previous code returned (emptyListing, nil)
+// here, which made cross-site commands silently drop the Prisjakt source while
+// still presenting as cross-site. Callers (sep_helpers.fetchPrisjaktSearch,
+// the prisjakt search command) now see the error and can report honestly.
 func ParseSearch(html []byte, query string) (*SearchListing, error) {
 	cat, err := ParseCategory(html)
 	if err != nil {
-		return &SearchListing{Query: query}, nil
+		return nil, fmt.Errorf("%w: %v", ErrSearchUnavailable, err)
+	}
+	// Even when the page parses, a Cloudflare-served shell yields zero
+	// products with no productCollection. Treat that as unavailable rather
+	// than an empty result so cross-site callers don't silently degrade.
+	if cat.Total == 0 && len(cat.Products) == 0 {
+		return nil, ErrSearchUnavailable
 	}
 	return &SearchListing{Query: query, Total: cat.Total, Products: cat.Products}, nil
 }
