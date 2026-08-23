@@ -86,13 +86,18 @@ func RegisterTools(s *server.MCPServer) {
 	)
 	s.AddTool(
 		mcplib.NewTool("prisjakt_search",
-			mcplib.WithDescription("Search Prisjakt products by name. Returns the matching product list. Required: query."),
+			// PATCH: Prisjakt /search moved to Cloudflare-challenged client-side
+			// rendering and no longer returns parseable product data.
+			mcplib.WithDescription("Search Prisjakt products by name. NOTE: Prisjakt search is currently unavailable (the site moved to Cloudflare-challenged client-side rendering); this tool returns an actionable error directing you to pricerunner_search. Required: query."),
 			mcplib.WithString("query", mcplib.Required(), mcplib.Description("Search text (Swedish or English)")),
 			mcplib.WithReadOnlyHintAnnotation(true),
 			mcplib.WithDestructiveHintAnnotation(false),
 			mcplib.WithOpenWorldHintAnnotation(true),
 		),
-		makeAPIHandler("GET", "/search", []mcpParamBinding{{PublicName: "query", WireName: "search", Location: "query"}}, []string{}),
+		// PATCH: use a dedicated handler that reports unavailability honestly
+		// instead of the generic makeAPIHandler, which returned the raw
+		// Cloudflare challenge body as an empty/null-shaped success result.
+		handlePrisjaktSearch,
 	)
 	// SQL tool — ad-hoc analysis on synced data without API calls
 	s.AddTool(

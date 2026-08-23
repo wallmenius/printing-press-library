@@ -13,7 +13,13 @@ type lowestResult struct {
 	Query     string                 `json:"query"`
 	BestOffer *lowestProduct         `json:"best_offer,omitempty"`
 	PerSite   map[string]*lowestSite `json:"per_site"`
-	Reason    string                 `json:"reason,omitempty"`
+	// PATCH: SourcesUnavailable surfaces any comparator whose search failed so
+	// callers see at the top level that this is a partial (not fully
+	// cross-site) result, rather than having to inspect per_site[*].reason.
+	// Prisjakt's /search is Cloudflare-dead, so it lands here while PriceRunner
+	// still returns results.
+	SourcesUnavailable []string `json:"sources_unavailable,omitempty"`
+	Reason             string   `json:"reason,omitempty"`
 }
 
 type lowestSite struct {
@@ -120,6 +126,14 @@ func newLowestCmd(flags *rootFlags) *cobra.Command {
 				result.PerSite["pricerunner"] = site
 			} else {
 				result.PerSite["pricerunner"] = &lowestSite{Site: "pricerunner", Reason: err.Error()}
+			}
+			// PATCH: flag any source that failed its search so the cross-site
+			// result is honest about being partial. A site is "unavailable"
+			// when its fetch/parse errored (Reason set, no successful listing).
+			for _, name := range []string{"prisjakt", "pricerunner"} {
+				if s := result.PerSite[name]; s != nil && s.Reason != "" && s.Cheapest == nil && s.HitCount == 0 {
+					result.SourcesUnavailable = append(result.SourcesUnavailable, name)
+				}
 			}
 			for _, s := range result.PerSite {
 				if s.Cheapest == nil {

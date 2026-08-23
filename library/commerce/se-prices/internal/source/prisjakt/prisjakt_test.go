@@ -73,3 +73,27 @@ func TestDecodeJSStringLiteral(t *testing.T) {
 		assert.Equal(t, tc.expected, got, "input: %s", tc.input)
 	}
 }
+
+// TestParseSearchUnavailable pins the honest-failure contract: when /search
+// returns a Cloudflare challenge / client-rendered shell with no React Query
+// state, ParseSearch surfaces ErrSearchUnavailable instead of swallowing the
+// failure into an empty-but-successful listing. (Regression for the silent
+// PriceRunner-only degradation in cross-site commands.)
+func TestParseSearchUnavailable(t *testing.T) {
+	// A Cloudflare-style shell with no __REACT_QUERY_STATE__ assignment.
+	shell := []byte(`<!DOCTYPE html><html><head><title>Just a moment...</title></head><body><div id="root"></div></body></html>`)
+	_, err := ParseSearch(shell, "iphone")
+	require.Error(t, err, "Cloudflare shell must produce an error, not an empty listing")
+	assert.ErrorIs(t, err, ErrSearchUnavailable)
+}
+
+// TestParseSearchSuccess confirms ParseSearch still returns results when the
+// page does carry parseable product data (search reuses the category parser).
+func TestParseSearchSuccess(t *testing.T) {
+	html, err := os.ReadFile("testdata/category.html")
+	require.NoError(t, err)
+	sl, err := ParseSearch(html, "mobiltelefoner")
+	require.NoError(t, err)
+	assert.NotEmpty(t, sl.Products, "parseable search page should return products")
+	assert.Equal(t, "mobiltelefoner", sl.Query)
+}

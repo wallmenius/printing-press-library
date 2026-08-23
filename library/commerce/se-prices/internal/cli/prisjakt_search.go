@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -46,6 +47,13 @@ func newPrisjaktSearchCmd(flags *rootFlags) *cobra.Command {
 			}
 			result, perr := prisjakt.ParseSearch(html, flagQuery)
 			if perr != nil {
+				// PATCH: report Prisjakt search unavailability with an
+				// actionable message instead of an empty/null result or an
+				// opaque "parsing" error. /search is now Cloudflare-challenged
+				// client-side rendering; PriceRunner search still works.
+				if errors.Is(perr, prisjakt.ErrSearchUnavailable) {
+					return fmt.Errorf("%w; use `se-prices-pp-cli pricerunner search --query %q` instead", perr, flagQuery)
+				}
 				return fmt.Errorf("parsing Prisjakt search: %w", perr)
 			}
 			if flagLimit > 0 && len(result.Products) > flagLimit {

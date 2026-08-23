@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "applied_at": "2026-06-02",
+  "base_run_id": "20260510-151936",
+  "base_printing_press_version": "4.2.2",
+  "patches": [
+    {
+      "id": "prisjakt-search-honest-failure",
+      "summary": "ParseSearch surfaces a real error (ErrSearchUnavailable) when Prisjakt /search returns a Cloudflare-challenged shell instead of swallowing it into an empty-but-successful listing; cross-site `lowest` now flags dropped sources via `sources_unavailable`, and the `prisjakt search` command + `prisjakt_search` MCP tool return a clear, actionable 'use PriceRunner instead' message.",
+      "reason": "Prisjakt moved /search to Cloudflare-challenged client-side rendering that no longer server-renders the React Query state. The old ParseSearch returned (emptyListing, nil) on parse failure, so cross-site commands (lowest, etc.) silently degraded to PriceRunner-only while still presenting as cross-site, and prisjakt_search returned an empty/null result that read as 'no matches' rather than 'search unavailable'.",
+      "files": [
+        "internal/source/prisjakt/prisjakt.go",
+        "internal/source/prisjakt/prisjakt_test.go",
+        "internal/cli/prisjakt_search.go",
+        "internal/cli/sep_lowest.go",
+        "internal/mcp/tools.go",
+        "internal/mcp/prisjakt_search_handler.go"
+      ],
+      "validated_outcome": "go build/vet pass; full test suite passes including new TestParseSearchUnavailable / TestParseSearchSuccess regression tests pinning the honest-failure contract; standalone verify_skill.py passes.",
+      "findings_addressed": ["F1", "F2"],
+      "deferred_to_upstream": [
+        {
+          "feature": "Generic MCP makeAPIHandler should detect an anti-bot challenge shell / empty-shaped response and return an honest error rather than returning the raw response body as a success result. Here this required a dedicated hand-authored handler (prisjakt_search_handler.go) replacing the generated makeAPIHandler registration for prisjakt_search.",
+          "reason": "Runtime honesty for challenge-served endpoints is a generator concern: any printed CLI whose endpoint sits behind Cloudflare-CSR would exhibit the same silent empty/null result through the generic handler. Local patch is intentionally se-prices-specific until the generator learns the pattern."
+        }
+      ],
+      "upstream_issue": "https://github.com/mvanhorn/cli-printing-press/issues/2515"
+    }
+  ]
+}
